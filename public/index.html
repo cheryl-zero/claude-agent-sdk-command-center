@@ -4,35 +4,50 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Adam — command center</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2315181a' stroke-width='1.9' stroke-linecap='round'%3E%3Ccircle cx='12' cy='5.5' r='2.2'/%3E%3Ccircle cx='5' cy='18.5' r='2.2'/%3E%3Ccircle cx='12' cy='18.5' r='2.2'/%3E%3Ccircle cx='19' cy='18.5' r='2.2'/%3E%3Cpath d='M12 7.7v8.6M10.9 7.3 6 16.6M13.1 7.3 18 16.6'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a1f1d' stroke-width='1.9' stroke-linecap='round'%3E%3Ccircle cx='12' cy='5.5' r='2.2'/%3E%3Ccircle cx='5' cy='18.5' r='2.2'/%3E%3Ccircle cx='12' cy='18.5' r='2.2'/%3E%3Ccircle cx='19' cy='18.5' r='2.2'/%3E%3Cpath d='M12 7.7v8.6M10.9 7.3 6 16.6M13.1 7.3 18 16.6'/%3E%3C/svg%3E">
 <style>
 :root{
+  /* Palette: page background, a soft green for what is approved or done,
+     a soft blue-grey for what is yours or waiting on you. */
   --bg:#f6f7f5;
-  --fg:#15181a;
-  --muted:#5a6468;
-  --border:#d7dcd9;
-  --accent:#f6e445;
-  --ok:#1d7a43;
-  --danger:#b4231c;
-  --warn:#8a5a00;
+  --surface:#ffffff;
+  --fg:#1a1f1d;
+  --muted:#56615e;
+  --border:#dce3df;
+  --mint:#c1e3c9;
+  --mint-ink:#27623b;
+  --mint-edge:#4f8a63;
+  --sky:#b3d2d9;
+  --sky-soft:#e2edf0;
+  --mint-soft:#e3f2e7;
+  --sky-ink:#27525c;
+  --sky-edge:#5d8791;
+  --danger:#a8271f;
+  --danger-ink:#9b2a22;
+  --warn:#7a5200;
   --font-text:"Segoe UI Variable Text","Segoe UI Variable","Segoe UI","Helvetica Neue",Arial,sans-serif;
-  --font-data:"Cascadia Mono","Cascadia Code",Consolas,"SF Mono",Menlo,monospace;
+  --font-data:ui-monospace,"SF Mono","Cascadia Mono","Segoe UI Mono","Roboto Mono","Droid Sans Mono",Consolas,Menlo,monospace;
   --r:4px;--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;
   --motion:160ms;
+  --shadow:0 1px 2px rgba(26,31,29,.05),0 6px 18px rgba(26,31,29,.06);
 }
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
-html,body{margin:0}
-body{background:var(--bg);color:var(--fg);font:400 15px/1.5 var(--font-text);-webkit-font-smoothing:antialiased}
+/* The page itself is the only thing that scrolls, with one slim scrollbar. */
+html{scrollbar-width:thin;scrollbar-color:#a3adaa transparent}
+*:not(.thread){scrollbar-width:thin;scrollbar-color:#a3adaa transparent}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:400 15px/1.5 var(--font-text);-webkit-font-smoothing:antialiased;overflow:hidden}
 h1,h2,h3,p,ol{margin:0}
 button{font:inherit;letter-spacing:.02em;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 button:disabled{cursor:not-allowed;opacity:.45}
 :focus-visible{outline:2px solid var(--fg);outline-offset:2px}
 .mono{font-family:var(--font-data);font-size:13px;font-variant-numeric:tabular-nums}
-.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* top bar */
-.topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:var(--s4);height:52px;padding:0 var(--s5);background:var(--bg);border-bottom:1px solid var(--border)}
+.topbar{position:sticky;top:0;z-index:5;display:flex;height:52px;background:var(--bg);border-bottom:1px solid var(--border)}
+/* The bar's contents sit in the same centred box as the page, so its edges line up with the columns below. */
+.bar-inner{display:flex;align-items:center;gap:var(--s4);flex:1;min-width:0;max-width:1320px;margin:0 auto;padding:0 var(--s5)}
 .brand{display:flex;align-items:center;gap:var(--s2);font-size:15px;font-weight:600;letter-spacing:.02em}
 .brand .sub{color:var(--muted);font-weight:400}
 .runstate{display:flex;align-items:center;gap:var(--s2);min-height:24px;color:var(--muted)}
@@ -43,125 +58,203 @@ button:disabled{cursor:not-allowed;opacity:.45}
 .actions{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
 
 /* buttons */
-.btn{display:inline-flex;align-items:center;gap:var(--s2);height:36px;padding:0 var(--s3);border-radius:var(--r);font-weight:600;white-space:nowrap;transition:box-shadow var(--motion),transform 80ms ease-out}
+.btn{display:inline-flex;align-items:center;gap:var(--s2);height:36px;padding:0 var(--s3);border-radius:var(--r);font-weight:600;white-space:nowrap;transition:box-shadow var(--motion),transform 80ms ease-out,background-color var(--motion)}
 .btn:active:not(:disabled){transform:translateY(1px)}
 .btn:hover:not(:disabled):not(.btn-ink):not(.btn-danger):not(.btn-ok){box-shadow:inset 0 0 0 1px var(--border)}
 .btn-ink{background:var(--fg);color:#fff}
-.btn-ok{background:var(--ok);color:#fff}
+.btn-ok{background:var(--mint);color:var(--fg);box-shadow:inset 0 0 0 1px var(--mint-edge)}
+.btn-ok:hover:not(:disabled){background:#b6dcc0}
 .btn-danger{background:var(--danger);color:#fff}
-.icon-btn{width:40px;height:40px;display:inline-grid;place-items:center;border-radius:50%;transition:box-shadow var(--motion)}
-.icon-btn:hover:not(:disabled){box-shadow:inset 0 0 0 1px var(--border)}
-.icon-btn[aria-pressed="true"]{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
+.btn:disabled.btn-ok,.btn:disabled.btn-danger{opacity:1;background:var(--border);color:var(--muted);box-shadow:none}
+.round{flex:none;width:36px;height:36px;display:inline-grid;place-items:center;border-radius:50%;color:var(--muted);transition:background-color var(--motion),color var(--motion)}
+.round:hover:not(:disabled){background:var(--sky-soft);color:var(--fg)}
+.round:disabled{opacity:1;background:none;color:#a3adaa}
+.round.send{background:var(--fg);color:#fff}
+.round.send:hover:not(:disabled){background:var(--fg);color:#fff}
+.round.send:disabled{background:var(--border);color:#fff}
+.round[aria-pressed="true"]{background:var(--sky);color:var(--fg);box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--sky)}
 .link-btn{color:var(--muted);text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px;font-weight:400}
 .link-btn:hover:not(:disabled){color:var(--fg);text-decoration-color:currentColor}
-.chip{display:block;margin-top:var(--s2);padding:var(--s1) 0;text-align:left;color:var(--fg);font-size:15px;text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px}
+.chip{display:block;margin-top:var(--s2);padding:var(--s1) var(--s2);margin-left:calc(-1 * var(--s2));border-radius:var(--r);text-align:left;color:var(--fg);font-size:15px;text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px;transition:background-color var(--motion)}
+.chip:hover{background:var(--sky-soft)}
 .chip::before{content:"→ ";color:var(--muted)}
+.log-more{margin-top:var(--s1);color:var(--muted);font-size:13px;letter-spacing:.02em;text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px}
+.log-more:hover{color:var(--fg)}
 
-/* layout */
-main{display:grid;grid-template-columns:minmax(0,7fr) minmax(320px,5fr);gap:var(--s6);max-width:1320px;margin:0 auto;padding:var(--s5)}
-.side{border-left:1px solid var(--border);padding-left:var(--s5)}
+/* layout: two panes that each keep their place. The conversation scrolls
+   inside the left pane, above a composer that stays at its foot. The status
+   pane on the right never moves with the conversation. The page itself does
+   not scroll, so the only visible scrollbar is the conversation's. */
+main{display:grid;grid-template-columns:minmax(0,2fr) minmax(320px,3fr);gap:0;max-width:1320px;margin:0 auto;padding:0 var(--s5);height:calc(100vh - 52px);height:calc(100dvh - 52px)}
+.talk{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--border);padding-right:var(--s5)}
+.thread{flex:1;min-height:0;display:flex;flex-direction:column;padding:var(--s2) var(--s3) var(--s2) 0;overflow-y:auto;overscroll-behavior:contain}
+.thread>*{flex:none}
+/* The conversation's scrollbar: slim, without arrow buttons. */
+.thread::-webkit-scrollbar{width:12px}
+.thread::-webkit-scrollbar-track{background:transparent}
+.thread::-webkit-scrollbar-thumb{background:#c5ccc8;border:3px solid var(--bg);border-radius:8px}
+.thread::-webkit-scrollbar-thumb:hover{background:#a3adaa}
+.thread::-webkit-scrollbar-button{display:none;width:0;height:0}
+.side-wrap{position:relative;display:flex;min-height:0}
+/* The status pane scrolls only when it must, and without a visible bar. */
+.side{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding:var(--s2) 0 var(--s5) var(--s5)}
+.side::-webkit-scrollbar{display:none}
+/* A fade at its bottom edge says when there is more below. */
+.side-fade{position:absolute;left:0;right:0;bottom:0;height:40px;background:linear-gradient(to bottom,rgba(246,247,245,0),var(--bg));opacity:0;transition:opacity var(--motion);pointer-events:none}
+.side-wrap.more .side-fade{opacity:1}
 .panel{padding:var(--s4) 0;border-top:1px solid var(--border)}
 .panel:first-child{border-top:0;padding-top:var(--s1)}
 .eyebrow{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s3);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.eyebrow .count{margin-left:auto;font-family:var(--font-data);font-weight:400;color:var(--fg);letter-spacing:0;text-transform:none}
+.eyebrow .count{display:inline-block;min-width:22px;margin-left:auto;padding:1px 8px;border-radius:999px;background:#e6eae7;font-family:var(--font-data);font-size:12px;line-height:18px;text-align:center;font-weight:400;color:var(--fg);letter-spacing:0;text-transform:none}
+.eyebrow .count.on{background:var(--sky)}
 .eyebrow .link-btn{margin-left:auto;text-transform:none;letter-spacing:.02em;font-size:13px;padding:8px 0}
 .eyebrow .count+.link-btn{margin-left:var(--s3)}
 .empty{color:var(--muted);max-width:46ch}
+.thread>.empty{margin:auto 0;padding:var(--s6) 0}
 .empty-title{color:var(--fg);font-size:17px;font-weight:600;margin-bottom:var(--s1)}
 
 /* conversation */
-.thread{min-height:46vh}
-.msg{padding:var(--s4) 0;border-bottom:1px solid var(--border)}
+.msg{padding:var(--s2) 0}
 .msg .who,.run .who,.note .who{margin-bottom:var(--s1);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.msg.you p{color:var(--muted);max-width:65ch;white-space:pre-wrap}
-.msg.adam p{font-size:17px;line-height:1.6;max-width:65ch}
+.msg.you{margin-top:var(--s5);padding-top:var(--s4);border-top:1px solid var(--border)}
+.thread>.msg:first-child{margin-top:var(--s1);border-top:0}
+.msg.you p:not(.who){background:var(--sky);border-radius:14px;padding:var(--s2) var(--s4);max-width:92%;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.adam{padding-top:var(--s1)}
+.msg.adam p{font-size:17px;line-height:1.6}
+/* Focus moves to a new answer for screen readers; the ring would read as a box around it. */
+.msg p[tabindex="-1"]:focus{outline:none}
 .msg.adam strong{font-weight:600}
 .msg.adam p+p{margin-top:var(--s3)}
 .msg.adam code,.approval code{font-family:var(--font-data);font-size:.85em}
-.msg.error p{color:var(--danger);max-width:65ch}
+.msg.error p{color:var(--danger-ink)}
 .msg.error button{margin-top:var(--s2)}
-.note{padding:var(--s3) 0;border-bottom:1px solid var(--border)}
-.note p{color:var(--muted);max-width:65ch;white-space:pre-wrap}
-.run{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s3);padding:var(--s4) 0;border-bottom:1px solid var(--border)}
-.run .who{margin:0}
-.run .now{color:var(--muted);max-width:46ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 160px}
-.run .clock{color:var(--muted)}
-.run .slow{color:var(--warn);flex-basis:100%}
-.composer{display:flex;align-items:flex-end;gap:var(--s2);margin-top:var(--s4)}
-.composer textarea{flex:1;min-height:52px;max-height:200px;resize:vertical;padding:var(--s2) var(--s3);font:inherit;color:inherit;background:none;border:1px solid var(--border);border-radius:var(--r)}
+.note{padding:var(--s3) 0}
+.note p{color:var(--muted);white-space:pre-wrap}
+.run{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s3);padding:var(--s4) 0}
+.run .spinner{flex:none;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--fg);border-radius:50%;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.run .who{margin:0;color:var(--fg)}
+.run .now{flex:1 1 160px;min-width:0;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.run .clock{font-family:var(--font-data);font-size:13px;color:var(--muted)}
+.run .slow{flex-basis:100%;font-size:13px;color:var(--muted)}
+.run .btn{height:30px;padding:0 var(--s3);box-shadow:inset 0 0 0 1px var(--border);color:var(--muted);font-weight:400}
+.run .btn:hover:not(:disabled){color:var(--fg)}
+
+/* composer */
+.composer-dock{flex:none;margin-top:var(--s2);padding:var(--s3) 0 var(--s5)}
+.composer{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:var(--s1) var(--s2) var(--s1) var(--s4);box-shadow:var(--shadow);transition:border-color var(--motion)}
+.composer:focus-within{border-color:var(--sky-edge)}
+.composer textarea{display:block;width:100%;min-height:28px;max-height:200px;resize:none;padding:var(--s3) 0 var(--s1);border:0;background:none;font:16px/1.5 var(--font-text);color:inherit;outline:none}
 .composer textarea::placeholder{color:var(--muted)}
-.composer textarea:focus{outline:2px solid var(--fg);outline-offset:1px}
-.composer textarea:disabled{opacity:.45}
-.hint{min-height:22px;margin-top:var(--s1);color:var(--muted)}
+.composer textarea:disabled{opacity:.5}
+.composer-bar{display:flex;align-items:center;gap:var(--s2);min-height:40px}
+.composer-keys{flex:1;min-width:0;margin-right:var(--s2);color:var(--muted);font-size:13px;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.composer-keys.bad{color:var(--danger-ink)}
 
 /* waiting for you */
-.approval{margin-bottom:var(--s3);padding:var(--s3);border:1px solid var(--fg);border-radius:var(--r)}
-.approval-head{display:flex;gap:var(--s2);font-family:var(--font-data);font-size:13px;color:var(--muted)}
-.approval-head .kind{color:var(--fg)}
-.approval-head .expiry{margin-left:auto;font-variant-numeric:tabular-nums}
-.approval h3{margin-top:var(--s1);font-size:17px;font-weight:600;line-height:1.35}
-.approval .what{margin-top:var(--s1);color:var(--muted);max-width:60ch}
-.code{display:flex;align-items:center;gap:var(--s3);margin-top:var(--s3)}
+.approval{margin-bottom:var(--s3);padding:var(--s4);border:1px solid var(--sky-edge);border-radius:10px;background:var(--sky-soft)}
+.approval-head{display:flex;align-items:center;gap:var(--s3);font-size:13px;color:var(--muted)}
+.approval-head .kind{padding:2px 10px;border-radius:999px;background:var(--sky);color:var(--fg);font-weight:600;letter-spacing:.02em}
+.approval-head .expiry{margin-left:auto;font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.approval h3{margin-top:var(--s3);font-size:17px;font-weight:600;line-height:1.45}
+.approval .what{margin-top:var(--s1);color:var(--muted);max-width:64ch}
+.facts{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5);margin:var(--s3) 0 0}
+.facts div{display:flex;align-items:baseline;gap:var(--s2)}
+.facts dt{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.facts dd{margin:0;font-weight:600}
+.approval-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3);margin-top:var(--s4)}
+.code{display:flex;align-items:center;gap:var(--s3)}
 .code .label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .code .digits{font-family:var(--font-data);font-size:24px;font-weight:600;letter-spacing:.06em;line-height:1}
-.code .digits mark{background:var(--accent);color:var(--fg);padding:2px 3px;margin-right:2px}
-.approval-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);margin-top:var(--s3)}
-.type-code{display:flex;gap:var(--s1)}
-.type-code input{width:96px;height:36px;padding:0 var(--s2);font-family:var(--font-data);font-size:15px;color:inherit;background:none;border:1px solid var(--border);border-radius:var(--r)}
+.code .digits mark{background:var(--sky);color:var(--fg);border-radius:3px;padding:3px 4px;margin-right:3px}
+.approval-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3)}
+/* The code box and its Approve button are one control. */
+.type-code{display:inline-flex}
+.type-code input{width:84px;height:36px;padding:0 var(--s2);font-family:var(--font-data);font-size:15px;color:inherit;background:var(--surface);border:1px solid var(--mint-edge);border-right:0;border-radius:var(--r) 0 0 var(--r)}
+.type-code input::placeholder{color:var(--muted)}
 .type-code input:focus{outline:2px solid var(--fg);outline-offset:1px}
-.listen-line{min-height:22px;margin-top:var(--s2);color:var(--muted)}
-.listen-line.bad{color:var(--danger)}
+.type-code .btn-ok{height:36px;border-radius:0 var(--r) var(--r) 0}
+/* Feedback on a voice approval: listening, refused, heard but unclear. */
+/* It takes no space while there is nothing to say. */
+.listen-line{margin-top:var(--s3);font-size:14px;color:var(--fg)}
+.listen-line:empty{display:none}
+.listen-line.bad{color:var(--danger-ink)}
 
 /* lists */
-.row{display:grid;grid-template-columns:auto 1fr auto;align-items:baseline;gap:var(--s3);padding:var(--s2) 0;border-bottom:1px solid var(--border)}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s3);padding:var(--s2) 0;border-bottom:1px solid var(--border)}
 .row:last-child{border-bottom:0}
 .row .name{font-weight:600}
+#agentList .name::before{content:"";display:inline-block;width:10px;height:10px;margin-right:var(--s2);border-radius:3px;background:var(--sky)}
+#agentList .row.running .name::before{background:var(--fg);animation:pulse 1.2s ease-in-out infinite}
+/* Agents as compact chips, so the status pane fits in one screen. */
+#agentList{display:flex;flex-wrap:wrap;gap:var(--s2)}
+#agentList .row{display:inline-flex;align-items:center;max-width:100%;padding:5px 12px;border:1px solid var(--border);border-radius:999px}
+#agentList .row.running{border-color:var(--sky-edge);background:var(--sky-soft)}
+#agentList .meta,#agentList .state{white-space:nowrap}
 .row .meta{color:var(--muted)}
 .row .state{font-family:var(--font-data);font-size:13px;color:var(--muted);white-space:nowrap}
-.row .state.on{color:var(--fg)}
-.row.wide{grid-template-columns:1fr auto}
+.row .state.on{padding:3px 10px;border-radius:999px;background:var(--sky);color:var(--fg);font-family:var(--font-text);font-size:13px;font-weight:600;letter-spacing:.02em}
+.row.wide{grid-template-columns:minmax(0,1fr) auto}
 .row .title{font-weight:600;line-height:1.4;overflow-wrap:anywhere}
 .row[aria-expanded="true"] .title{color:var(--muted)}
-.handoff-body{grid-column:1/-1;margin:0 0 var(--s2);padding:var(--s2) var(--s3);font-family:var(--font-data);font-size:13px;line-height:1.55;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;border:1px solid var(--border);border-radius:var(--r)}
-.log{list-style:none;padding:0;max-height:300px;overflow:auto}
-.log li{display:grid;grid-template-columns:60px 1fr;gap:var(--s2);padding:3px 0;font-family:var(--font-data);font-size:14px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
-.log li time{color:var(--muted);white-space:nowrap}
+.handoff-body{grid-column:1/-1;margin:0 0 var(--s2);padding:var(--s2) var(--s3);font-family:var(--font-data);font-size:13px;line-height:1.55;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--border);border-radius:var(--r)}
+.log{list-style:none;padding:0}
+/* The time column takes the width its font needs, so time and text never overlap. */
+.log li{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:var(--s3);padding:3px 0;font-family:var(--font-data);font-size:14px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+.log li time{white-space:nowrap}
 .log li strong{font-weight:600;color:var(--fg)}
-.log li.ok{color:var(--ok)}
-.log li.bad{color:var(--danger)}
+.log li.ok{color:var(--mint-ink)}
+.log li.ok strong{color:var(--mint-ink)}
+.log li.bad{color:var(--danger-ink)}
+.log li.bad strong{color:var(--danger-ink)}
+/* A decision that waits on the owner, or that ran, is a coloured row: the status side's counterpart to the owner's bubbles. */
+.log li.wait,.log li.done{margin:3px 0;padding:4px 10px;border-radius:6px}
+.log li.wait{background:var(--sky-soft)}
+.log li.done{background:var(--mint-soft);color:var(--mint-ink)}
+.log li.done strong{color:var(--mint-ink)}
 
 /* dialog, toast */
-dialog{max-width:440px;padding:var(--s5);color:var(--fg);background:var(--bg);border:1px solid var(--fg);border-radius:var(--r)}
-dialog::backdrop{background:rgba(21,24,26,.35)}
+dialog{max-width:440px;padding:var(--s5);color:var(--fg);background:var(--bg);border:1px solid var(--danger);border-radius:var(--r)}
+dialog::backdrop{background:rgba(26,31,29,.35)}
 dialog h2{font-size:17px;font-weight:600;line-height:1.35}
 dialog p{margin-top:var(--s2);color:var(--muted)}
 dialog .mono{color:var(--fg)}
 .dialog-actions{display:flex;justify-content:flex-end;gap:var(--s2);margin-top:var(--s5)}
-.toast{position:fixed;left:50%;bottom:var(--s5);transform:translateX(-50%);max-width:min(92vw,560px);padding:var(--s2) var(--s3);color:#fff;background:var(--fg);border-radius:var(--r);box-shadow:0 6px 24px rgba(21,24,26,.18);overflow-wrap:anywhere}
+.toast{position:fixed;left:50%;bottom:var(--s5);transform:translateX(-50%);max-width:min(92vw,560px);padding:var(--s2) var(--s3);color:#fff;background:var(--fg);border-radius:var(--r);box-shadow:0 6px 24px rgba(26,31,29,.18);overflow-wrap:anywhere}
 .toast[hidden]{display:none}
 
+/* narrow screens: one column and the page scrolls, so nothing can end up out
+   of reach. The composer still stays within reach while the conversation is
+   scrolled, and the status pane simply follows below it. */
 @media (max-width:960px){
-  main{grid-template-columns:minmax(0,1fr);gap:var(--s5)}
-  .side{border-left:0;padding-left:0;border-top:1px solid var(--border);padding-top:var(--s3)}
-  .log{max-height:none}
+  body{overflow:auto}
+  main{display:block;height:auto;padding:0 var(--s4)}
+  .talk{min-height:calc(100vh - 52px);min-height:calc(100dvh - 52px);border-right:0;padding-right:0}
+  .thread{overflow:visible;padding-right:0}
+  .composer-dock{position:sticky;bottom:0;z-index:2;background:var(--bg)}
+  .side-wrap{display:block}
+  .side{overflow:visible;padding-left:0;border-top:1px solid var(--border)}
+  .side-fade{display:none}
 }
 @media (max-width:640px){
-  .topbar{gap:var(--s2);padding:0 var(--s4)}
+  .bar-inner{gap:var(--s2);padding:0 var(--s4)}
   .brand .sub{display:none}
   .btn span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .composer-keys:not(.bad){display:none}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <header class="topbar">
+  <div class="bar-inner">
   <div class="brand">
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5.5" r="2.2"/><circle cx="5" cy="18.5" r="2.2"/><circle cx="12" cy="18.5" r="2.2"/><circle cx="19" cy="18.5" r="2.2"/><path d="M12 7.7v8.6M10.9 7.3 6 16.6M13.1 7.3 18 16.6"/></svg>
     <span>Adam</span><span class="sub">command center</span>
   </div>
   <p class="runstate" id="runState" role="status"><span class="dot" aria-hidden="true"></span><span id="runStateText">Idle</span></p>
   <div class="actions">
-    <button type="button" class="btn" id="speakBtn" aria-pressed="true" title="Read Adam's replies and anything waiting for approval aloud">
+    <button type="button" class="btn" id="speakBtn" aria-pressed="true" title="Reads aloud the answers to what you asked by voice, and every action that waits for your approval">
       <svg id="speakIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4h3l4 3V7l-4 3H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
       <span>Read aloud</span>
     </button>
@@ -174,26 +267,31 @@ dialog .mono{color:var(--fg)}
       <span>Release kill switch</span>
     </button>
   </div>
+  </div>
 </header>
 
 <main>
   <section class="talk" aria-label="Conversation with Adam">
     <div class="thread" id="thread"></div>
-    <form class="composer" id="composer">
-      <textarea id="askText" rows="2" maxlength="4000" autocomplete="off" placeholder="Say or type something to Adam" aria-label="Message for Adam"></textarea>
-      <button type="button" class="icon-btn" id="micBtn" aria-pressed="false" title="Talk to Adam">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-      </button>
-      <button type="submit" class="btn btn-ink" id="sendBtn">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
-        <span>Send</span>
-      </button>
-    </form>
-    <p class="hint" id="composerHint" role="status"></p>
+    <div class="composer-dock">
+      <form class="composer" id="composer">
+        <textarea id="askText" rows="1" maxlength="4000" autocomplete="off" placeholder="Say or type something to Adam" aria-label="Message for Adam"></textarea>
+        <div class="composer-bar">
+          <span class="composer-keys" id="composerHint" role="status">Enter to send · Shift+Enter for a new line</span>
+          <button type="button" class="round" id="micBtn" aria-pressed="false" title="Talk to Adam">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          </button>
+          <button type="submit" class="round send" id="sendBtn" aria-label="Send" title="Send">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+          </button>
+        </div>
+      </form>
+    </div>
   </section>
 
-  <aside class="side" aria-label="Status panels">
-    <section class="panel" aria-labelledby="pendingTitle">
+  <aside class="side-wrap" aria-label="Status panels">
+    <div class="side">
+    <section class="panel" id="pendingPanel" aria-labelledby="pendingTitle">
       <h2 class="eyebrow" id="pendingTitle">Waiting for you <span class="count" id="pendingCount">0</span></h2>
       <div id="pendingList"></div>
     </section>
@@ -208,13 +306,17 @@ dialog .mono{color:var(--fg)}
     <section class="panel" aria-labelledby="decisionTitle">
       <h2 class="eyebrow" id="decisionTitle">Recent decisions <span class="count" id="decisionCount">0</span></h2>
       <ol class="log" id="decisionList"></ol>
+      <button type="button" class="log-more" data-list="decisionList" hidden></button>
       <p class="empty" id="decisionEmpty" hidden>Adam's recommendations and everything that ran will be listed here.</p>
     </section>
     <section class="panel" aria-labelledby="activityTitle">
       <h2 class="eyebrow" id="activityTitle">Activity</h2>
       <ol class="log" id="activityList"></ol>
+      <button type="button" class="log-more" data-list="activityList" hidden></button>
       <p class="empty" id="activityEmpty" hidden>Every step is logged here: who was called, what was read, what waited for you.</p>
     </section>
+    </div>
+    <div class="side-fade" aria-hidden="true"></div>
   </aside>
 </main>
 
@@ -236,13 +338,18 @@ dialog .mono{color:var(--fg)}
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const KEYS_HINT = "Enter to send · Shift+Enter for a new line";
+  function hint(text = KEYS_HINT, bad = false) {
+    $("#composerHint").textContent = text;
+    $("#composerHint").classList.toggle("bad", bad);
+  }
   const mmss = (ms) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}`;
   const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
   const S = {
     busy: null, started: 0, slow: false, killed: false,
     speak: true, speaking: false, listening: false, listenMode: null, target: null,
-    pending: [], seen: new Set(), lastAsk: "", expanded: new Set(), connected: true, restored: false,
+    pending: [], seen: new Set(), lastAsk: "", expanded: new Set(), connected: true, restored: false, showAll: new Set(), spoken: false, lastByVoice: false, loaded: false,
   };
   let runRow = null;
   let toastTimer = null;
@@ -274,8 +381,10 @@ dialog .mono{color:var(--fg)}
       S.pending = st.pending;
       const fresh = st.pending.filter((p) => !S.seen.has(p.id));
       for (const p of st.pending) S.seen.add(p.id);
-      if (fresh.length && S.seen.size > fresh.length) {
-        for (const p of fresh) say(`Waiting for your approval. ${p.action.summary} To approve, say approve, then the code: ${p.code.replace(/-/g, ", ")}.`);
+      // A card that appears while the page is open is read aloud; cards that
+      // are already waiting when the page opens are not.
+      if (fresh.length && S.loaded) {
+        for (const p of fresh) say(`Waiting for your approval. ${p.action.summary} To approve, say approve, then the code: ${spokenDigits(p.code)}.`);
         toast(`${fresh.length === 1 ? "One action is" : `${fresh.length} actions are`} waiting for your approval.`);
       }
       renderPending(st.pending);
@@ -298,14 +407,18 @@ dialog .mono{color:var(--fg)}
       }
       if (!S.restored) {
         S.restored = true;
+        // A restored conversation opens at the top of the page; it does not jump down.
+        S.restoring = true;
         restoreThread(st.decisions);
+        S.restoring = false;
       }
-      $("#decisionCount").textContent = st.decisions.length;
       $("#killBtn").hidden = st.killed;
       $("#resetBtn").hidden = !st.killed;
       if (!S.busy && st.busy) beginRun(st.busy);
       if (S.busy && !st.busy) endRun();
       setRunState(S.busy ? S.busy : st.killed ? "Kill switch engaged" : "Idle", Boolean(S.busy));
+      sideMore();
+      S.loaded = true;
     } catch (err) {
       S.connected = false;
       setConnection(false, err.message);
@@ -320,9 +433,16 @@ dialog .mono{color:var(--fg)}
     return false;
   }
 
+  // The status pane scrolls only when it must, and without a visible bar; a
+  // fade at its bottom edge says when there is more below.
+  function sideMore() {
+    const el = $(".side");
+    $(".side-wrap").classList.toggle("more", el.scrollHeight - el.scrollTop - el.clientHeight > 8);
+  }
+  $(".side").addEventListener("scroll", sideMore, { passive: true });
+
   function setConnection(ok, message) {
-    $("#composerHint").textContent = ok ? "" : `Live updates are off: ${message ?? "the server cannot be reached"}. Retrying…`;
-    $("#composerHint").classList.toggle("bad", !ok);
+    hint(ok ? KEYS_HINT : `Live updates are off: ${message ?? "the server cannot be reached"}. Retrying…`, !ok);
   }
 
   // ───────────────────────── conversation ─────────────────────────
@@ -333,6 +453,19 @@ dialog .mono{color:var(--fg)}
     return n;
   }
   const thread = $("#thread");
+  // Bring the newest message to just above the composer. On a wide screen the
+  // conversation scrolls inside its own pane; on a narrow one the page scrolls
+  // and the composer is brought into view.
+  const stick = () => {
+    if (S.restoring) return;
+    if (getComputedStyle(thread).overflowY === "auto") thread.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
+    else $(".composer-dock").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+  const autoGrow = () => {
+    const ta = $("#askText");
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+  };
 
   function emptyState() {
     const wrap = node("div", "empty");
@@ -346,7 +479,12 @@ dialog .mono{color:var(--fg)}
     ]) {
       const b = node("button", "chip", escapeHtml(t));
       b.type = "button";
-      b.addEventListener("click", () => { $("#askText").value = t; $("#composer").requestSubmit(); });
+      b.addEventListener("click", () => {
+        $("#askText").value = t;
+        autoGrow();
+        syncComposer();
+        $("#composer").requestSubmit();
+      });
       chips.append(b);
     }
     wrap.append(chips);
@@ -356,7 +494,7 @@ dialog .mono{color:var(--fg)}
   function add(kind, html) {
     const empty = $(".empty", thread);
     if (empty && kind !== "run") empty.remove();
-    const item = node("div", kind);
+    const item = node("div", kind === "note" ? "note" : `msg ${kind}`);
     const who = kind === "you" ? "You" : kind === "adam" ? "Adam" : kind === "error" ? "Adam could not answer" : "";
     if (who) item.append(node("p", "who", who));
     const p = node("p", null, html);
@@ -364,6 +502,7 @@ dialog .mono{color:var(--fg)}
     item.append(p);
     thread.append(item);
     item._p = p;
+    stick();
     return item;
   }
 
@@ -380,6 +519,7 @@ dialog .mono{color:var(--fg)}
     S.started = Date.now();
     S.slow = false;
     runRow = node("div", "run");
+    runRow.append(node("span", "spinner"));
     runRow.append(node("p", "who", escapeHtml(label)));
     runRow.append(node("p", "now", "Starting"));
     runRow.append(node("span", "clock mono", "0:00"));
@@ -388,6 +528,7 @@ dialog .mono{color:var(--fg)}
     stop.addEventListener("click", async () => { try { await api("/api/stop", {}); } catch (err) { toast(err.message); } });
     runRow.append(stop);
     thread.append(runRow);
+    stick();
     setRunState(label, true);
     syncComposer();
   }
@@ -405,8 +546,9 @@ dialog .mono{color:var(--fg)}
   }
 
   function syncComposer() {
+    const text = $("#askText").value.trim();
     $("#askText").disabled = Boolean(S.busy) || S.killed;
-    $("#sendBtn").disabled = Boolean(S.busy) || S.killed;
+    $("#sendBtn").disabled = Boolean(S.busy) || S.killed || !text;
     $("#pickupBtn").disabled = Boolean(S.busy) || S.killed;
     syncMic();
   }
@@ -426,8 +568,12 @@ dialog .mono{color:var(--fg)}
     const text = $("#askText").value.trim();
     if (!text || S.busy) return;
     $("#askText").value = "";
+    autoGrow();
+    syncComposer();
     add("you", escapeHtml(text));
     S.lastAsk = text;
+    S.lastByVoice = S.spoken;
+    S.spoken = false;
     try {
       await api("/api/ask", { text });
       beginRun("Adam is working");
@@ -465,7 +611,8 @@ dialog .mono{color:var(--fg)}
       if (r.status === "success") {
         const item = addAdam(r.text);
         item._p.focus({ preventScroll: false });
-        say(`Adam says: ${plain(r.text)}`);
+        // A request made by voice gets a spoken answer; a typed one stays on screen.
+        if (S.lastByVoice) say(`Adam says: ${plain(r.text)}`);
         for (const h of r.handoffs ?? []) toast(`Recorded handoff for ${h.to}: ${h.title}`);
       } else if (r.status === "killed" || r.status === "stopped") {
         add("note", escapeHtml(r.status === "killed" ? "Stopped: the kill switch was engaged." : "Stopped by you."));
@@ -484,6 +631,7 @@ dialog .mono{color:var(--fg)}
   function renderPending(list) {
     const box = $("#pendingList");
     $("#pendingCount").textContent = list.length;
+    $("#pendingCount").classList.toggle("on", list.length > 0);
     const fresh = new Set(list.map((p) => p.id));
     // Keep cards that are still waiting (a voice attempt may be in progress); rebuild the rest.
     for (const card of [...box.children]) {
@@ -495,22 +643,44 @@ dialog .mono{color:var(--fg)}
     if (!list.length && !box.children.length) box.replaceChildren(emptyNote("When Adam proposes a payment, a message or an access change, it stops here until you approve it."));
   }
 
+  const FACT_LABEL = { payment: "To", send_message: "To", change_access: "For" };
+
   function approvalCard(p) {
     const card = node("article", "approval");
     card.id = `approval-${p.id}`;
     card.dataset.id = p.id;
-    card.append(node("div", "approval-head", `<span class="kind">${escapeHtml(p.action.type.replaceAll("_", " "))}</span><span>rule: ${escapeHtml(p.rule)}</span><span class="expiry"></span>`));
-    card.append(node("h3", null, escapeHtml(p.action.title)));
-    card.append(node("p", "what", `${escapeHtml(p.action.summary)}${p.action.amount_usd != null ? ` <span class="mono">${escapeHtml(String(p.action.amount_usd))} USD</span>` : ""}`));
+    const a = p.action;
+
+    const head = node("div", "approval-head");
+    head.append(node("span", "kind", escapeHtml(cap(String(a.type).replaceAll("_", " ")))));
+    const expiry = node("span", "expiry");
+    head.append(expiry);
+    card.append(head);
+
+    card.append(node("h3", null, escapeHtml(a.title)));
+    card.append(node("p", "what", escapeHtml(a.summary)));
+
+    // The two things a person checks before approving: how much, and to whom.
+    const facts = node("dl", "facts");
+    const fact = (label, value) => {
+      const row = node("div");
+      row.append(node("dt", null, escapeHtml(label)), node("dd", null, escapeHtml(value)));
+      facts.append(row);
+    };
+    if (a.amount_usd != null) fact("Amount", `${a.amount_usd} USD`);
+    if (a.recipient && FACT_LABEL[a.type]) fact(FACT_LABEL[a.type], a.recipient);
+    if (facts.children.length) card.append(facts);
+
+    const foot = node("div", "approval-foot");
     const code = node("div", "code");
     code.append(node("span", "label", "One-time code"));
     code.append(node("span", "digits", p.code.replace(/\D/g, "").split("").map((d) => `<mark>${d}</mark>`).join("")));
-    card.append(code);
+    foot.append(code);
 
     const actions = node("div", "approval-actions");
     const voice = node("button", "btn btn-ok", '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Approve by voice</span>');
     voice.type = "button";
-    voice.title = "Say “approve”, then the four digits of the code";
+    voice.title = 'Say "approve", then the four digits of the code';
     voice.addEventListener("click", () => listen("approve", p.id));
     actions.append(voice);
 
@@ -519,22 +689,26 @@ dialog .mono{color:var(--fg)}
     input.inputMode = "numeric";
     input.autocomplete = "off";
     input.placeholder = "Code";
-    input.setAttribute("aria-label", `One-time code for: ${p.action.title}`);
+    input.setAttribute("aria-label", `One-time code for: ${a.title}`);
     const ok = node("button", "btn btn-ok", "Approve");
     ok.type = "submit";
     typed.append(input, ok);
-    typed.addEventListener("submit", (e) => { e.preventDefault(); approve(p.id, digits(input.value)); });
+    typed.addEventListener("submit", (e) => {
+      e.preventDefault();
+      approve(p.id, digits(input.value));
+    });
     actions.append(typed);
 
     const reject = node("button", "link-btn", "Reject");
     reject.type = "button";
     reject.addEventListener("click", async () => {
       const r = await api("/api/reject", { id: p.id });
-      toast(r.ok ? `Rejected. Nothing was done.` : `Could not reject: ${cap(String(r.reason).replaceAll("_", " "))}.`);
+      toast(r.ok ? "Rejected. Nothing was done." : `Could not reject: ${cap(String(r.reason).replaceAll("_", " "))}.`);
       refresh();
     });
     actions.append(reject);
-    card.append(actions);
+    foot.append(actions);
+    card.append(foot);
 
     const line = node("p", "listen-line");
     line.setAttribute("role", "status");
@@ -544,8 +718,11 @@ dialog .mono{color:var(--fg)}
 
     const tick = () => {
       const left = Date.parse(p.expires_at) - Date.now();
-      $(".expiry", card).textContent = left > 0 ? `expires in ${mmss(left)}` : "expired";
-      if (left <= 0) { clearInterval(card._timer); refresh(); }
+      expiry.textContent = left > 0 ? `Expires in ${mmss(left)}` : "Expired";
+      if (left <= 0) {
+        clearInterval(card._timer);
+        refresh();
+      }
     };
     tick();
     card._timer = setInterval(tick, 1000);
@@ -600,6 +777,7 @@ dialog .mono{color:var(--fg)}
         for (const other of $$("[aria-expanded]", box)) other.setAttribute("aria-expanded", "false");
         row.setAttribute("aria-expanded", String(!open));
         body.hidden = open;
+        sideMore();
         if (!open) { try { body.textContent = (await api(`/api/handoff/${h.id}`)).content; } catch (err) { body.textContent = `Could not load this handoff: ${err.message}`; } }
       };
       row.addEventListener("click", toggle);
@@ -622,7 +800,7 @@ dialog .mono{color:var(--fg)}
     const box = $("#agentList");
     box.replaceChildren();
     for (const a of list) {
-      const row = node("div", "row");
+      const row = node("div", a.running ? "row running" : "row");
       row.append(node("span", "name", escapeHtml(a.name)));
       row.append(node("span", "meta", escapeHtml(a.role)));
       row.append(node("span", `state ${a.running ? "on" : ""}`, `${a.running ? "running" : "idle"}${a.tokens ? ` · ${a.tokens.toLocaleString()} tokens` : ""}`));
@@ -630,8 +808,16 @@ dialog .mono{color:var(--fg)}
     }
   }
 
+  // Lists do not scroll. The newest entries are shown and the rest sit behind
+  // a "show more" link, so the page keeps a single scrollbar.
+  const LIST_LIMIT = { decisionList: 4, activityList: 6 };
   function renderLog(list, items, line) {
-    list.replaceChildren(...items.slice(0, 60).map(line));
+    const limit = LIST_LIMIT[list.id] ?? 12;
+    const all = S.showAll.has(list.id);
+    list.replaceChildren(...(all ? items : items.slice(0, limit)).map(line));
+    const more = $(`.log-more[data-list="${list.id}"]`);
+    more.hidden = items.length <= limit;
+    more.textContent = all ? "Show less" : `Show ${items.length - limit} more`;
   }
 
   const DECISION = {
@@ -640,7 +826,7 @@ dialog .mono{color:var(--fg)}
     action_executed: (d) => `<strong>Ran (simulated)</strong> ${escapeHtml(d.title)}`,
   };
   function decisionLine(d) {
-    const li = node("li", d.kind === "action_executed" ? "ok" : "", `<time>${clock(d.ts)}</time><span>${(DECISION[d.kind] ?? ((x) => `${escapeHtml(x.kind)}`))(d)}</span>`);
+    const li = node("li", d.kind === "action_executed" ? "done" : d.kind === "action_pending_approval" ? "wait" : "", `<time>${clock(d.ts)}</time><span>${(DECISION[d.kind] ?? ((x) => `${escapeHtml(x.kind)}`))(d)}</span>`);
     return li;
   }
   const ACTIVITY = {
@@ -662,6 +848,7 @@ dialog .mono{color:var(--fg)}
     action_proposed: (e) => `proposed: ${e.title}`,
     approval_pending: (e) => `waiting for you: ${e.title}`,
     approval_given: (e) => `you approved ${e.approval}`,
+    voice_approval: (e) => (e.matched ? `you said “${e.heard}” by voice — that is the code` : e.heard ? `you said “${e.heard}” by voice — not the code, nothing approved` : "voice approval attempt — nothing heard"),
     approval_rejected: (e) => `you rejected ${e.approval}`,
     approval_refused: (e) => `approval refused (${e.reason})`,
     approval_cancelled: (e) => `cancelled by kill switch: ${e.approval}`,
@@ -673,7 +860,7 @@ dialog .mono{color:var(--fg)}
   const BAD = new Set(["approval_refused", "kill_switch_engaged", "error"]);
   function activityLine(e) {
     const text = (ACTIVITY[e.event] ?? ((x) => `${x.event} ${x.agent ?? ""}`))(e);
-    return node("li", BAD.has(e.event) ? "bad" : e.event === "approval_given" ? "ok" : "", `<time>${clock(e.ts)}</time><span>${escapeHtml(text)}</span>`);
+    return node("li", BAD.has(e.event) ? "bad" : e.event === "approval_given" || (e.event === "voice_approval" && e.matched) ? "ok" : "", `<time>${clock(e.ts)}</time><span>${escapeHtml(text)}</span>`);
   }
 
   // ───────────────────────── live events ─────────────────────────
@@ -693,7 +880,7 @@ dialog .mono{color:var(--fg)}
     const list = $("#activityList");
     $("#activityEmpty").hidden = true;
     list.prepend(activityLine(ev));
-    while (list.children.length > 60) list.lastChild.remove();
+    while (list.children.length > (S.showAll.has("activityList") ? 120 : LIST_LIMIT.activityList)) list.lastChild.remove();
     if (runRow && ev.event === "agent_started") runRow.querySelector(".now").textContent = `${cap(ev.agent)} is on it`;
     if (runRow && ev.event === "tool_call") runRow.querySelector(".now").textContent = `${cap(ev.agent)} · ${ev.brief}`;
   });
@@ -709,14 +896,40 @@ dialog .mono{color:var(--fg)}
   let sayToken = 0;
   let sayGuard = null;
 
+  // The page is English, so it always speaks with an English voice, whatever
+  // the computer's own language. Browsers fill their voice list a moment
+  // after the page opens, so it is read afresh every time.
+  const hasSpeech = "speechSynthesis" in window;
+  function englishVoice() {
+    if (!hasSpeech) return null;
+    const english = speechSynthesis.getVoices().filter((v) => /^en([-_]|$)/i.test(v.lang));
+    // An American voice that works offline first; then any other English voice.
+    const rank = (v) => (/^en[-_]US/i.test(v.lang) ? 4 : 0) + (v.localService ? 2 : 0);
+    return english.sort((a, b) => rank(b) - rank(a))[0] ?? null;
+  }
+  function voiceTitle() {
+    const v = englishVoice();
+    $("#speakBtn").title = v
+      ? `Reads aloud with ${v.name}. Answers to what you asked by voice, and every action that waits for your approval. Click to switch off.`
+      : "Reads aloud. This computer has no English voice, so the sound may be poor. Click to switch off.";
+  }
+  if (hasSpeech) {
+    speechSynthesis.getVoices();
+    speechSynthesis.addEventListener("voiceschanged", voiceTitle);
+    voiceTitle();
+  }
+  // Digits are spoken as English words, so no voice can read them in another language.
+  const DIGIT_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+  const spokenDigits = (code) => code.replace(/\D/g, "").split("").map((d) => DIGIT_WORDS[Number(d)]).join(", ");
+
   function say(text) {
     if (!S.speak || !("speechSynthesis" in window)) return;
     const mine = ++sayToken;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    const voices = speechSynthesis.getVoices();
-    const voice = voices.find((v) => v.lang === "en-US") ?? voices.find((v) => v.lang.startsWith("en"));
+    const voice = englishVoice();
     if (voice) u.voice = voice;
+    u.lang = voice?.lang ?? "en-US";
     let started = false;
     u.onstart = () => {
       started = true;
@@ -766,8 +979,10 @@ dialog .mono{color:var(--fg)}
     for (const card of $$(".approval")) {
       const voice = card._buttons?.[0];
       if (!voice) continue;
-      voice.disabled = closed || Boolean(card._done);
-      voice.title = closed ? "Microphone is closed while Adam speaks" : 'Say "approve", then the four digits of the code';
+      // Usable even while a reply is being read aloud: clicking it stops the
+      // read-back first, then listens.
+      voice.disabled = Boolean(card._done);
+      voice.title = 'Say "approve", then the four digits of the code';
     }
   }
 
@@ -778,12 +993,37 @@ dialog .mono{color:var(--fg)}
     "audio-capture": "No microphone was found.",
   };
 
+  function stopSpeaking() {
+    clearTimeout(sayGuard);
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    S.speaking = false;
+    syncMic();
+  }
+
   function listen(mode, id) {
-    const Recognizer = recognizerClass();
-    if (!Recognizer) return toast("Voice needs Chrome or Edge. You can type instead.");
-    if (S.speaking) return toast("The microphone is closed while Adam speaks.");
+    if (recognizerClass() == null) return toast("Voice needs Chrome or Edge. You can type instead.");
     if (S.listening) { rec.abort(); return; }
-    rec = new Recognizer();
+    // The system's own voice must never reach the microphone. To approve by
+    // voice while a reply is being read aloud, the read-back stops first and
+    // listening starts a moment later, once the speaker has gone quiet.
+    if (S.speaking && mode === "approve") {
+      const line = $(`#approval-${id}`)?._line;
+      if (line) line.textContent = "Stopping the read-back, then listening for the code…";
+      stopSpeaking();
+      setTimeout(() => {
+        if (!S.listening && !S.speaking) startListening(mode, id);
+      }, 450);
+      return;
+    }
+    if (S.speaking) return toast("The microphone is closed while Adam speaks.");
+    startListening(mode, id);
+  }
+
+  function startListening(mode, id) {
+    // The card may have gone while the read-back was stopping.
+    if (mode === "approve" && !S.pending.some((p) => p.id === id)) return;
+    const out = mode === "approve" ? $(`#approval-${id}`)?._line : null;
+    rec = new (recognizerClass())();
     rec.lang = "en-US";
     rec.interimResults = true;
     rec.continuous = false;
@@ -792,8 +1032,10 @@ dialog .mono{color:var(--fg)}
     S.listening = true;
     S.listenMode = mode;
     S.target = id ?? null;
-    const out = mode === "approve" ? $(`#approval-${id}`)?._line : null;
-    if (out) { out.textContent = "Listening for the code…"; out.classList.remove("bad"); }
+    if (out) {
+      out.textContent = "Listening for the code…";
+      out.classList.remove("bad");
+    }
     syncMic();
     rec.onresult = (ev) => {
       let interim = "";
@@ -804,13 +1046,19 @@ dialog .mono{color:var(--fg)}
         else interim += r[0].transcript;
       }
       const soFar = (finals.map((f) => f.text).join(" ") || interim).trim();
-      if (mode === "talk") $("#askText").value = soFar;
-      else if (out && soFar) out.textContent = `Heard: “${soFar}”`;
+      if (mode === "talk") {
+        $("#askText").value = soFar;
+        autoGrow();
+        syncComposer();
+      } else if (out && soFar) out.textContent = `Heard: “${soFar}”`;
       if (finals.length) heard = finals;
     };
     rec.onerror = (ev) => {
       if (ev.error === "aborted") return;
-      if (ev.error === "no-speech") { if (out) out.textContent = "Nothing was heard. Try again or type the code."; return; }
+      if (ev.error === "no-speech") {
+        if (out) out.textContent = "Nothing was heard. Say the four digits again, or type them.";
+        return;
+      }
       toast(REASON[ev.error] ?? `Microphone problem: ${ev.error}. You can type instead.`);
     };
     rec.onend = () => {
@@ -826,9 +1074,14 @@ dialog .mono{color:var(--fg)}
     if (mode === "talk") {
       const text = (alts[0]?.text ?? $("#askText").value).trim();
       $("#askText").value = text;
+      autoGrow();
+      syncComposer();
       // Clear speech is sent; unclear speech is left in the box for the owner to confirm.
-      if (text && alts[0]?.confidence >= 0.6) $("#composer").requestSubmit();
-      else if (text) $("#composerHint").textContent = "Not sure I heard that right. Edit it or press Send.";
+      if (text && alts[0]?.confidence >= 0.6) {
+        S.spoken = true;
+        $("#composer").requestSubmit();
+      }
+      else if (text) hint("Not sure I heard that right. Edit it or press Send.", true);
       return;
     }
     const card = S.pending.find((p) => p.id === id);
@@ -836,14 +1089,26 @@ dialog .mono{color:var(--fg)}
     if (!card || !line) return;
     const code = card.code.replace(/\D/g, "");
     const m = matchCode(alts, code);
-    if (m.matched && m.clear) approve(id, code);
-    else if (m.matched) {
-      line.textContent = `Heard “${m.heard}”, but not clearly.`;
-      const go = node("button", "link-btn", "Approve anyway");
+    // What was said during an approval attempt belongs in the activity log:
+    // the recognised text only, never a recording.
+    const best = alts.reduce((a, b) => (b.confidence > a.confidence ? b : a), alts[0]);
+    const said = m.matched ? (alts.find((a) => digits(a.text) === code) ?? best) : best;
+    const heardText = String(said?.text ?? "").trim();
+    api("/api/voice-attempt", { id, heard: heardText, confidence: Math.round((said?.confidence ?? 0) * 100) / 100, matched: m.matched }).catch(() => {});
+    line.textContent = "";
+    line.classList.toggle("bad", !m.matched);
+    if (m.matched && m.clear) return approve(id, code);
+    if (m.matched) {
+      line.append(`Heard “${heardText}”, but not clearly. `);
+      const go = node("button", "btn", "Approve anyway");
       go.type = "button";
       go.addEventListener("click", () => approve(id, code));
-      line.append(" ", go);
-    } else line.textContent = "That was not the code. Nothing was approved. Say it again or type it.";
+      line.append(go);
+      return;
+    }
+    line.textContent = heardText
+      ? `Heard “${heardText}”. That is not the code, so nothing was approved. Say the four digits again, or type them.`
+      : "Nothing was heard. Say the four digits again, or type them.";
   }
 
   // Enter sends; Shift+Enter starts a new line.
@@ -853,13 +1118,17 @@ dialog .mono{color:var(--fg)}
       $("#composer").requestSubmit();
     }
   });
+  $("#askText").addEventListener("input", () => {
+    autoGrow();
+    syncComposer();
+  });
 
   $("#micBtn").addEventListener("click", () => listen("talk"));
 
   $("#speakBtn").addEventListener("click", () => {
     S.speak = !S.speak;
     $("#speakBtn").setAttribute("aria-pressed", String(S.speak));
-    if (!S.speak) { speechSynthesis.cancel(); S.speaking = false; syncMic(); }
+    if (!S.speak) stopSpeaking();
   });
 
   // ───────────────────────── owner actions ─────────────────────────
@@ -896,7 +1165,17 @@ dialog .mono{color:var(--fg)}
 
   // ───────────────────────── start ─────────────────────────
   thread.append(emptyState());
-  if (!recognizerClass()) $("#composerHint").textContent = "Voice needs Chrome or Edge. Text works everywhere.";
+  if (!recognizerClass()) hint(`${KEYS_HINT} · voice needs Chrome or Edge`);
+  for (const b of $$(".log-more")) {
+    b.addEventListener("click", () => {
+      const id = b.dataset.list;
+      if (S.showAll.has(id)) S.showAll.delete(id);
+      else S.showAll.add(id);
+      delete lastDrawn[id === "decisionList" ? "decisions" : "activity"];
+      refresh();
+    });
+  }
+  syncComposer();
   refresh();
   setInterval(refresh, 5000);
 })();

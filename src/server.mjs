@@ -5,7 +5,7 @@ import { APP_DIR, PATHS, ensureStateDirs, isKilled, readAgents } from "./config.
 import * as core from "./core.mjs";
 import { displayCode, listApprovals, publicApproval } from "./approvals.mjs";
 import { listHandoffs } from "./handoffs.mjs";
-import { readLog } from "./log.mjs";
+import { logActivity, readLog } from "./log.mjs";
 
 // The web command center: one page for the owner with text and voice input,
 // the four panels (agents, open handoffs, pending approvals, recent decisions),
@@ -198,6 +198,18 @@ const server = http.createServer(async (req, res) => {
         if (!current?.controller) return send(res, 409, { error: "idle", message: "No run is in progress." });
         current.controller.abort();
         return send(res, 202, { started: false });
+      }
+      // What the owner said during an attempt to approve by voice: part of the
+      // activity log (the recognised text only, never audio).
+      case "/api/voice-attempt": {
+        logActivity("voice_approval", {
+          approval: String(body.id ?? ""),
+          heard: String(body.heard ?? "").slice(0, 200),
+          confidence: Number(body.confidence) || 0,
+          matched: Boolean(body.matched),
+        });
+        res.writeHead(204);
+        return res.end();
       }
       // A refusal (wrong code, already decided) is an answer, not a failure.
       case "/api/approve":

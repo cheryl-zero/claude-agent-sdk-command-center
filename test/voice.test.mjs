@@ -22,6 +22,7 @@ test("digits as heard, in the forms recognizers return", () => {
   assert.equal(digits("four thousand seven hundred and twenty-nine"), "4729");
   assert.equal(digits("approve, code four seven two nine"), "4729");
   assert.equal(digits("double four seven"), "447");
+  assert.equal(digits("approve nine O O two"), "9002");
   assert.equal(digits("approve"), "");
   assert.equal(digits(""), "");
 });

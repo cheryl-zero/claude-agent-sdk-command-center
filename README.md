@@ -4,7 +4,9 @@ You talk to one agent, **Adam**. He decides which specialist to involve (finance
 
 This is a small working sample of that, built on [`@anthropic-ai/claude-agent-sdk`](https://code.claude.com/docs/en/agent-sdk/overview). Every agent is a markdown file. Every record is fake. Every action is a simulation: nothing is paid, sent or changed.
 
-![The command center with one action waiting for approval](docs/command-center.png)
+[![Watch the demo](docs/command-center.png)](docs/demo.mp4)
+
+**Watch the 72-second demo** (silent, English captions): [docs/demo.mp4](docs/demo.mp4) — a live handoff, a recorded handoff picked up on the next run, a payment refused with a wrong one-time code and granted with the right one, and the kill switch.
 
 ## What works, and the test that shows it
 
@@ -166,7 +168,7 @@ Text and voice input, the four panels (agents, handoffs, waiting for you, recent
 Voice uses the browser's own speech engine, so it needs Chrome or Edge.
 
 - **Talk.** Click the microphone and speak. Clear speech is sent; unclear speech is placed in the box for you to edit.
-- **Read-back.** Adam's reply and anything waiting for you are read aloud. The microphone is closed while the system speaks, so its own voice cannot approve for you.
+- **Read-back.** Adam's reply and anything waiting for you are read aloud. The microphone is closed while the system speaks, so its own voice cannot approve for you. It speaks with an English voice when the computer has one; on a computer whose only voices are Chinese, the digits are still spoken as English words ("eight, seven, three, zero") and the **Read aloud** button says which voice is in use. Edge's built-in online English voices sound best.
 - **Approve by voice.** Say "approve", then the four digits on the card. The digits heard must equal the code exactly; a mishearing is not sent to the server at all, so it does not use up the three attempts. The rule is in [`public/voice.js`](public/voice.js) and has its own tests.
 
 ## How it is put together
