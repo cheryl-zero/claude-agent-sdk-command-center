@@ -1,0 +1,18 @@
+# One command:  docker compose up --build
+# Then open     http://localhost:8080
+#
+# Put test keys in .env (copy .env.example). The page is reachable from this
+# computer only, because it has no login.
+services:
+  command-center:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - command-center-data:/data
+    restart: unless-stopped
+
+volumes:
+  command-center-data:

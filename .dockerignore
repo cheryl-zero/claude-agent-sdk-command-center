@@ -1,0 +1,7 @@
+node_modules
+state
+.test-home
+test/reports
+.env
+.git
+*.md.bak

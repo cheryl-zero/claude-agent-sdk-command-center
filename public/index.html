@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adam — command center</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2315181a' stroke-width='1.9' stroke-linecap='round'%3E%3Ccircle cx='12' cy='5.5' r='2.2'/%3E%3Ccircle cx='5' cy='18.5' r='2.2'/%3E%3Ccircle cx='12' cy='18.5' r='2.2'/%3E%3Ccircle cx='19' cy='18.5' r='2.2'/%3E%3Cpath d='M12 7.7v8.6M10.9 7.3 6 16.6M13.1 7.3 18 16.6'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f6f7f5;
+  --fg:#15181a;
+  --muted:#5a6468;
+  --border:#d7dcd9;
+  --accent:#f6e445;
+  --ok:#1d7a43;
+  --danger:#b4231c;
+  --warn:#8a5a00;
+  --font-text:"Segoe UI Variable Text","Segoe UI Variable","Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --font-data:"Cascadia Mono","Cascadia Code",Consolas,"SF Mono",Menlo,monospace;
+  --r:4px;--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;
+  --motion:160ms;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:400 15px/1.5 var(--font-text);-webkit-font-smoothing:antialiased}
+h1,h2,h3,p,ol{margin:0}
+button{font:inherit;letter-spacing:.02em;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.45}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.mono{font-family:var(--font-data);font-size:13px;font-variant-numeric:tabular-nums}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:var(--s4);height:52px;padding:0 var(--s5);background:var(--bg);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:var(--s2);font-size:15px;font-weight:600;letter-spacing:.02em}
+.brand .sub{color:var(--muted);font-weight:400}
+.runstate{display:flex;align-items:center;gap:var(--s2);min-height:24px;color:var(--muted)}
+.runstate .dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+.runstate.on{color:var(--fg)}
+.runstate.on .dot{background:var(--fg);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.actions{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:var(--s2);height:36px;padding:0 var(--s3);border-radius:var(--r);font-weight:600;white-space:nowrap;transition:box-shadow var(--motion),transform 80ms ease-out}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.btn:hover:not(:disabled):not(.btn-ink):not(.btn-danger):not(.btn-ok){box-shadow:inset 0 0 0 1px var(--border)}
+.btn-ink{background:var(--fg);color:#fff}
+.btn-ok{background:var(--ok);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.icon-btn{width:40px;height:40px;display:inline-grid;place-items:center;border-radius:50%;transition:box-shadow var(--motion)}
+.icon-btn:hover:not(:disabled){box-shadow:inset 0 0 0 1px var(--border)}
+.icon-btn[aria-pressed="true"]{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
+.link-btn{color:var(--muted);text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px;font-weight:400}
+.link-btn:hover:not(:disabled){color:var(--fg);text-decoration-color:currentColor}
+.chip{display:block;margin-top:var(--s2);padding:var(--s1) 0;text-align:left;color:var(--fg);font-size:15px;text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px}
+.chip::before{content:"→ ";color:var(--muted)}
+
+/* layout */
+main{display:grid;grid-template-columns:minmax(0,7fr) minmax(320px,5fr);gap:var(--s6);max-width:1320px;margin:0 auto;padding:var(--s5)}
+.side{border-left:1px solid var(--border);padding-left:var(--s5)}
+.panel{padding:var(--s4) 0;border-top:1px solid var(--border)}
+.panel:first-child{border-top:0;padding-top:var(--s1)}
+.eyebrow{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s3);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.eyebrow .count{margin-left:auto;font-family:var(--font-data);font-weight:400;color:var(--fg);letter-spacing:0;text-transform:none}
+.eyebrow .link-btn{margin-left:auto;text-transform:none;letter-spacing:.02em;font-size:13px;padding:8px 0}
+.eyebrow .count+.link-btn{margin-left:var(--s3)}
+.empty{color:var(--muted);max-width:46ch}
+.empty-title{color:var(--fg);font-size:17px;font-weight:600;margin-bottom:var(--s1)}
+
+/* conversation */
+.thread{min-height:46vh}
+.msg{padding:var(--s4) 0;border-bottom:1px solid var(--border)}
+.msg .who,.run .who,.note .who{margin-bottom:var(--s1);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.msg.you p{color:var(--muted);max-width:65ch;white-space:pre-wrap}
+.msg.adam p{font-size:17px;line-height:1.6;max-width:65ch}
+.msg.adam strong{font-weight:600}
+.msg.adam p+p{margin-top:var(--s3)}
+.msg.adam code,.approval code{font-family:var(--font-data);font-size:.85em}
+.msg.error p{color:var(--danger);max-width:65ch}
+.msg.error button{margin-top:var(--s2)}
+.note{padding:var(--s3) 0;border-bottom:1px solid var(--border)}
+.note p{color:var(--muted);max-width:65ch;white-space:pre-wrap}
+.run{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s3);padding:var(--s4) 0;border-bottom:1px solid var(--border)}
+.run .who{margin:0}
+.run .now{color:var(--muted);max-width:46ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 160px}
+.run .clock{color:var(--muted)}
+.run .slow{color:var(--warn);flex-basis:100%}
+.composer{display:flex;align-items:flex-end;gap:var(--s2);margin-top:var(--s4)}
+.composer textarea{flex:1;min-height:52px;max-height:200px;resize:vertical;padding:var(--s2) var(--s3);font:inherit;color:inherit;background:none;border:1px solid var(--border);border-radius:var(--r)}
+.composer textarea::placeholder{color:var(--muted)}
+.composer textarea:focus{outline:2px solid var(--fg);outline-offset:1px}
+.composer textarea:disabled{opacity:.45}
+.hint{min-height:22px;margin-top:var(--s1);color:var(--muted)}
+
+/* waiting for you */
+.approval{margin-bottom:var(--s3);padding:var(--s3);border:1px solid var(--fg);border-radius:var(--r)}
+.approval-head{display:flex;gap:var(--s2);font-family:var(--font-data);font-size:13px;color:var(--muted)}
+.approval-head .kind{color:var(--fg)}
+.approval-head .expiry{margin-left:auto;font-variant-numeric:tabular-nums}
+.approval h3{margin-top:var(--s1);font-size:17px;font-weight:600;line-height:1.35}
+.approval .what{margin-top:var(--s1);color:var(--muted);max-width:60ch}
+.code{display:flex;align-items:center;gap:var(--s3);margin-top:var(--s3)}
+.code .label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.code .digits{font-family:var(--font-data);font-size:24px;font-weight:600;letter-spacing:.06em;line-height:1}
+.code .digits mark{background:var(--accent);color:var(--fg);padding:2px 3px;margin-right:2px}
+.approval-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);margin-top:var(--s3)}
+.type-code{display:flex;gap:var(--s1)}
+.type-code input{width:96px;height:36px;padding:0 var(--s2);font-family:var(--font-data);font-size:15px;color:inherit;background:none;border:1px solid var(--border);border-radius:var(--r)}
+.type-code input:focus{outline:2px solid var(--fg);outline-offset:1px}
+.listen-line{min-height:22px;margin-top:var(--s2);color:var(--muted)}
+.listen-line.bad{color:var(--danger)}
+
+/* lists */
+.row{display:grid;grid-template-columns:auto 1fr auto;align-items:baseline;gap:var(--s3);padding:var(--s2) 0;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.row .name{font-weight:600}
+.row .meta{color:var(--muted)}
+.row .state{font-family:var(--font-data);font-size:13px;color:var(--muted);white-space:nowrap}
+.row .state.on{color:var(--fg)}
+.row.wide{grid-template-columns:1fr auto}
+.row .title{font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+.row[aria-expanded="true"] .title{color:var(--muted)}
+.handoff-body{grid-column:1/-1;margin:0 0 var(--s2);padding:var(--s2) var(--s3);font-family:var(--font-data);font-size:13px;line-height:1.55;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;border:1px solid var(--border);border-radius:var(--r)}
+.log{list-style:none;padding:0;max-height:300px;overflow:auto}
+.log li{display:grid;grid-template-columns:60px 1fr;gap:var(--s2);padding:3px 0;font-family:var(--font-data);font-size:14px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+.log li time{color:var(--muted);white-space:nowrap}
+.log li strong{font-weight:600;color:var(--fg)}
+.log li.ok{color:var(--ok)}
+.log li.bad{color:var(--danger)}
+
+/* dialog, toast */
+dialog{max-width:440px;padding:var(--s5);color:var(--fg);background:var(--bg);border:1px solid var(--fg);border-radius:var(--r)}
+dialog::backdrop{background:rgba(21,24,26,.35)}
+dialog h2{font-size:17px;font-weight:600;line-height:1.35}
+dialog p{margin-top:var(--s2);color:var(--muted)}
+dialog .mono{color:var(--fg)}
+.dialog-actions{display:flex;justify-content:flex-end;gap:var(--s2);margin-top:var(--s5)}
+.toast{position:fixed;left:50%;bottom:var(--s5);transform:translateX(-50%);max-width:min(92vw,560px);padding:var(--s2) var(--s3);color:#fff;background:var(--fg);border-radius:var(--r);box-shadow:0 6px 24px rgba(21,24,26,.18);overflow-wrap:anywhere}
+.toast[hidden]{display:none}
+
+@media (max-width:960px){
+  main{grid-template-columns:minmax(0,1fr);gap:var(--s5)}
+  .side{border-left:0;padding-left:0;border-top:1px solid var(--border);padding-top:var(--s3)}
+  .log{max-height:none}
+}
+@media (max-width:640px){
+  .topbar{gap:var(--s2);padding:0 var(--s4)}
+  .brand .sub{display:none}
+  .btn span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5.5" r="2.2"/><circle cx="5" cy="18.5" r="2.2"/><circle cx="12" cy="18.5" r="2.2"/><circle cx="19" cy="18.5" r="2.2"/><path d="M12 7.7v8.6M10.9 7.3 6 16.6M13.1 7.3 18 16.6"/></svg>
+    <span>Adam</span><span class="sub">command center</span>
+  </div>
+  <p class="runstate" id="runState" role="status"><span class="dot" aria-hidden="true"></span><span id="runStateText">Idle</span></p>
+  <div class="actions">
+    <button type="button" class="btn" id="speakBtn" aria-pressed="true" title="Read Adam's replies and anything waiting for approval aloud">
+      <svg id="speakIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4h3l4 3V7l-4 3H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+      <span>Read aloud</span>
+    </button>
+    <button type="button" class="btn btn-danger" id="killBtn">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v8M6.3 7.5a8 8 0 1 0 11.4 0"/></svg>
+      <span>Kill switch</span>
+    </button>
+    <button type="button" class="btn" id="resetBtn" hidden>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2-4.9M19 5v4h-4"/></svg>
+      <span>Release kill switch</span>
+    </button>
+  </div>
+</header>
+
+<main>
+  <section class="talk" aria-label="Conversation with Adam">
+    <div class="thread" id="thread"></div>
+    <form class="composer" id="composer">
+      <textarea id="askText" rows="2" maxlength="4000" autocomplete="off" placeholder="Say or type something to Adam" aria-label="Message for Adam"></textarea>
+      <button type="button" class="icon-btn" id="micBtn" aria-pressed="false" title="Talk to Adam">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <button type="submit" class="btn btn-ink" id="sendBtn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+        <span>Send</span>
+      </button>
+    </form>
+    <p class="hint" id="composerHint" role="status"></p>
+  </section>
+
+  <aside class="side" aria-label="Status panels">
+    <section class="panel" aria-labelledby="pendingTitle">
+      <h2 class="eyebrow" id="pendingTitle">Waiting for you <span class="count" id="pendingCount">0</span></h2>
+      <div id="pendingList"></div>
+    </section>
+    <section class="panel" aria-labelledby="handoffTitle">
+      <h2 class="eyebrow" id="handoffTitle">Handoffs <span class="count" id="handoffCount">0</span><button type="button" class="link-btn" id="pickupBtn" title="Run the specialists so they pick up open handoffs">Run specialists</button></h2>
+      <div id="handoffList"></div>
+    </section>
+    <section class="panel" aria-labelledby="agentTitle">
+      <h2 class="eyebrow" id="agentTitle">Agents</h2>
+      <div id="agentList"></div>
+    </section>
+    <section class="panel" aria-labelledby="decisionTitle">
+      <h2 class="eyebrow" id="decisionTitle">Recent decisions <span class="count" id="decisionCount">0</span></h2>
+      <ol class="log" id="decisionList"></ol>
+      <p class="empty" id="decisionEmpty" hidden>Adam's recommendations and everything that ran will be listed here.</p>
+    </section>
+    <section class="panel" aria-labelledby="activityTitle">
+      <h2 class="eyebrow" id="activityTitle">Activity</h2>
+      <ol class="log" id="activityList"></ol>
+      <p class="empty" id="activityEmpty" hidden>Every step is logged here: who was called, what was read, what waited for you.</p>
+    </section>
+  </aside>
+</main>
+
+<dialog id="killDialog" aria-labelledby="killTitle" aria-describedby="killText">
+  <h2 id="killTitle">Engage the kill switch?</h2>
+  <p id="killText">Every run stops, and everything waiting for your approval is cancelled. No action can run again until you release it.</p>
+  <p class="mono" id="killSummary"></p>
+  <div class="dialog-actions">
+    <button type="button" class="btn" id="killCancel">Cancel</button>
+    <button type="button" class="btn btn-danger" id="killConfirm">Engage kill switch</button>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="/voice.js"></script>
+<script>
+(() => {
+  "use strict";
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const mmss = (ms) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}`;
+  const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+  const S = {
+    busy: null, started: 0, slow: false, killed: false,
+    speak: true, speaking: false, listening: false, listenMode: null, target: null,
+    pending: [], seen: new Set(), lastAsk: "", expanded: new Set(), connected: true, restored: false,
+  };
+  let runRow = null;
+  let toastTimer = null;
+
+  // ───────────────────────── text helpers ─────────────────────────
+  const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // Adam answers in light markdown; only bold and code are kept.
+  const md = (s) => escapeHtml(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\n{2,}/g, "<br><br>").replace(/\n/g, "<br>");
+  const plain = (s) => String(s).replace(/[*_`#]/g, "").replace(/\s+/g, " ").trim();
+  // Voice matching lives in /voice.js, so the tests run the same rule outside
+  // the page: the digits heard must equal the code, and be heard clearly.
+  const { digits, matchCode } = window.VoiceApproval;
+
+  // ───────────────────────── server ─────────────────────────
+  async function api(path, body) {
+    const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    let data = {};
+    try { data = await res.json(); } catch { data = {}; }
+    if (!res.ok && !data.reason) throw new Error(data.message || `The server answered ${res.status}.`);
+    return data;
+  }
+
+  async function refresh() {
+    try {
+      const st = await api("/api/state");
+      S.connected = true;
+      setConnection(true);
+      S.killed = st.killed;
+      S.pending = st.pending;
+      const fresh = st.pending.filter((p) => !S.seen.has(p.id));
+      for (const p of st.pending) S.seen.add(p.id);
+      if (fresh.length && S.seen.size > fresh.length) {
+        for (const p of fresh) say(`Waiting for your approval. ${p.action.summary} To approve, say approve, then the code: ${p.code.replace(/-/g, ", ")}.`);
+        toast(`${fresh.length === 1 ? "One action is" : `${fresh.length} actions are`} waiting for your approval.`);
+      }
+      renderPending(st.pending);
+      // Panels are redrawn only when their data changed, so an open handoff
+      // stays open and a scrolled list keeps its place between refreshes.
+      if (!same("handoffs", st.handoffs)) renderHandoffs(st.handoffs);
+      if (!same("agents", st.agents)) renderAgents(st.agents);
+      if (!same("decisions", st.decisions)) {
+        // The owner's own requests belong to the conversation, not to this list.
+        const shown = st.decisions.filter((d) => d.kind !== "request");
+        renderLog($("#decisionList"), shown, decisionLine);
+        $("#decisionCount").textContent = shown.length;
+        $("#decisionEmpty").hidden = shown.length > 0;
+      }
+      if (!same("activity", st.activity)) {
+        renderLog($("#activityList"), st.activity.filter((ev) => !QUIET.has(ev.event)), activityLine);
+        shownEvents.clear();
+        for (const ev of st.activity) shownEvents.add(eventKey(ev));
+        $("#activityEmpty").hidden = st.activity.length > 0;
+      }
+      if (!S.restored) {
+        S.restored = true;
+        restoreThread(st.decisions);
+      }
+      $("#decisionCount").textContent = st.decisions.length;
+      $("#killBtn").hidden = st.killed;
+      $("#resetBtn").hidden = !st.killed;
+      if (!S.busy && st.busy) beginRun(st.busy);
+      if (S.busy && !st.busy) endRun();
+      setRunState(S.busy ? S.busy : st.killed ? "Kill switch engaged" : "Idle", Boolean(S.busy));
+    } catch (err) {
+      S.connected = false;
+      setConnection(false, err.message);
+    }
+  }
+
+  const lastDrawn = {};
+  function same(key, value) {
+    const json = JSON.stringify(value);
+    if (lastDrawn[key] === json) return true;
+    lastDrawn[key] = json;
+    return false;
+  }
+
+  function setConnection(ok, message) {
+    $("#composerHint").textContent = ok ? "" : `Live updates are off: ${message ?? "the server cannot be reached"}. Retrying…`;
+    $("#composerHint").classList.toggle("bad", !ok);
+  }
+
+  // ───────────────────────── conversation ─────────────────────────
+  function node(tag, cls, html) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html != null) n.innerHTML = html;
+    return n;
+  }
+  const thread = $("#thread");
+
+  function emptyState() {
+    const wrap = node("div", "empty");
+    wrap.append(node("p", "empty-title", "Talk to Adam by voice or text."));
+    wrap.append(node("p", null, "Adam asks the right specialist and brings back one recommendation. Low-risk actions run on their own and are logged. Spending, sending and access changes stop and wait for you."));
+    const chips = node("div", "chips");
+    for (const t of [
+      "Should I pay the 4,800 USD invoice from Northgate Security Systems?",
+      "Leave a recorded handoff for the security specialist to audit door badges.",
+      "Go ahead and pay invoice INV-1050, 620 USD.",
+    ]) {
+      const b = node("button", "chip", escapeHtml(t));
+      b.type = "button";
+      b.addEventListener("click", () => { $("#askText").value = t; $("#composer").requestSubmit(); });
+      chips.append(b);
+    }
+    wrap.append(chips);
+    return wrap;
+  }
+
+  function add(kind, html) {
+    const empty = $(".empty", thread);
+    if (empty && kind !== "run") empty.remove();
+    const item = node("div", kind);
+    const who = kind === "you" ? "You" : kind === "adam" ? "Adam" : kind === "error" ? "Adam could not answer" : "";
+    if (who) item.append(node("p", "who", who));
+    const p = node("p", null, html);
+    p.setAttribute("tabindex", "-1");
+    item.append(p);
+    thread.append(item);
+    item._p = p;
+    return item;
+  }
+
+  // Adam's answer, one paragraph per block.
+  function addAdam(text) {
+    const parts = String(text).split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+    const item = add("adam", md(parts[0] ?? ""));
+    for (const part of parts.slice(1)) item.append(node("p", null, md(part)));
+    return item;
+  }
+
+  function beginRun(label) {
+    S.busy = label;
+    S.started = Date.now();
+    S.slow = false;
+    runRow = node("div", "run");
+    runRow.append(node("p", "who", escapeHtml(label)));
+    runRow.append(node("p", "now", "Starting"));
+    runRow.append(node("span", "clock mono", "0:00"));
+    const stop = node("button", "btn", 'Stop this run');
+    stop.type = "button";
+    stop.addEventListener("click", async () => { try { await api("/api/stop", {}); } catch (err) { toast(err.message); } });
+    runRow.append(stop);
+    thread.append(runRow);
+    setRunState(label, true);
+    syncComposer();
+  }
+
+  function endRun() {
+    if (runRow) runRow.remove();
+    runRow = null;
+    S.busy = null;
+    syncComposer();
+  }
+
+  function setRunState(text, on) {
+    $("#runStateText").textContent = text;
+    $("#runState").classList.toggle("on", Boolean(on));
+  }
+
+  function syncComposer() {
+    $("#askText").disabled = Boolean(S.busy) || S.killed;
+    $("#sendBtn").disabled = Boolean(S.busy) || S.killed;
+    $("#pickupBtn").disabled = Boolean(S.busy) || S.killed;
+    syncMic();
+  }
+
+  setInterval(() => {
+    if (!S.busy || !runRow) return;
+    const elapsed = Date.now() - S.started;
+    $(".clock", runRow).textContent = mmss(elapsed);
+    if (elapsed > 15000 && !S.slow) {
+      S.slow = true;
+      runRow.append(node("p", "slow", "Taking longer than usual. You can stop this run."));
+    }
+  }, 1000);
+
+  $("#composer").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = $("#askText").value.trim();
+    if (!text || S.busy) return;
+    $("#askText").value = "";
+    add("you", escapeHtml(text));
+    S.lastAsk = text;
+    try {
+      await api("/api/ask", { text });
+      beginRun("Adam is working");
+    } catch (err) {
+      showError(err.message, text);
+    }
+  });
+
+  // After a reload the conversation comes back from the decision log: each
+  // recommendation is shown with the request that led to it.
+  function restoreThread(decisions) {
+    const asks = new Map(decisions.filter((d) => d.kind === "request").map((d) => [d.run, d.text]));
+    const answers = decisions.filter((d) => d.kind === "recommendation").reverse();
+    for (const d of answers.slice(-6)) {
+      const q = asks.get(d.run);
+      if (q) add("you", escapeHtml(q));
+      addAdam(d.text);
+    }
+  }
+
+  function showError(message, text) {
+    const item = add("error", escapeHtml(message));
+    if (text) {
+      const retry = node("button", "btn", "Try again");
+      retry.type = "button";
+      retry.addEventListener("click", () => { item.remove(); $("#askText").value = text; $("#composer").requestSubmit(); });
+      item._p.after(retry);
+    }
+    endRun();
+  }
+
+  function onRun(r) {
+    endRun();
+    if (r.kind === "ask") {
+      if (r.status === "success") {
+        const item = addAdam(r.text);
+        item._p.focus({ preventScroll: false });
+        say(`Adam says: ${plain(r.text)}`);
+        for (const h of r.handoffs ?? []) toast(`Recorded handoff for ${h.to}: ${h.title}`);
+      } else if (r.status === "killed" || r.status === "stopped") {
+        add("note", escapeHtml(r.status === "killed" ? "Stopped: the kill switch was engaged." : "Stopped by you."));
+      } else {
+        showError(r.text || `The run ended with "${r.status}".`, S.lastAsk);
+      }
+    } else {
+      for (const x of r.results ?? []) add("note", escapeHtml(`${cap(x.agent)}: ${x.text || x.status}`));
+    }
+    refresh();
+  }
+
+  // ───────────────────────── panels ─────────────────────────
+  const emptyNote = (text) => node("p", "empty", escapeHtml(text));
+
+  function renderPending(list) {
+    const box = $("#pendingList");
+    $("#pendingCount").textContent = list.length;
+    const fresh = new Set(list.map((p) => p.id));
+    // Keep cards that are still waiting (a voice attempt may be in progress); rebuild the rest.
+    for (const card of [...box.children]) {
+      if (fresh.has(card.dataset.id)) continue;
+      clearInterval(card._timer);
+      card.remove();
+    }
+    for (const p of list) if (!$(`#approval-${p.id}`, box)) box.append(approvalCard(p));
+    if (!list.length && !box.children.length) box.replaceChildren(emptyNote("When Adam proposes a payment, a message or an access change, it stops here until you approve it."));
+  }
+
+  function approvalCard(p) {
+    const card = node("article", "approval");
+    card.id = `approval-${p.id}`;
+    card.dataset.id = p.id;
+    card.append(node("div", "approval-head", `<span class="kind">${escapeHtml(p.action.type.replaceAll("_", " "))}</span><span>rule: ${escapeHtml(p.rule)}</span><span class="expiry"></span>`));
+    card.append(node("h3", null, escapeHtml(p.action.title)));
+    card.append(node("p", "what", `${escapeHtml(p.action.summary)}${p.action.amount_usd != null ? ` <span class="mono">${escapeHtml(String(p.action.amount_usd))} USD</span>` : ""}`));
+    const code = node("div", "code");
+    code.append(node("span", "label", "One-time code"));
+    code.append(node("span", "digits", p.code.replace(/\D/g, "").split("").map((d) => `<mark>${d}</mark>`).join("")));
+    card.append(code);
+
+    const actions = node("div", "approval-actions");
+    const voice = node("button", "btn btn-ok", '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Approve by voice</span>');
+    voice.type = "button";
+    voice.title = "Say “approve”, then the four digits of the code";
+    voice.addEventListener("click", () => listen("approve", p.id));
+    actions.append(voice);
+
+    const typed = node("form", "type-code");
+    const input = node("input");
+    input.inputMode = "numeric";
+    input.autocomplete = "off";
+    input.placeholder = "Code";
+    input.setAttribute("aria-label", `One-time code for: ${p.action.title}`);
+    const ok = node("button", "btn btn-ok", "Approve");
+    ok.type = "submit";
+    typed.append(input, ok);
+    typed.addEventListener("submit", (e) => { e.preventDefault(); approve(p.id, digits(input.value)); });
+    actions.append(typed);
+
+    const reject = node("button", "link-btn", "Reject");
+    reject.type = "button";
+    reject.addEventListener("click", async () => {
+      const r = await api("/api/reject", { id: p.id });
+      toast(r.ok ? `Rejected. Nothing was done.` : `Could not reject: ${cap(String(r.reason).replaceAll("_", " "))}.`);
+      refresh();
+    });
+    actions.append(reject);
+    card.append(actions);
+
+    const line = node("p", "listen-line");
+    line.setAttribute("role", "status");
+    card.append(line);
+    card._line = line;
+    card._buttons = [voice, input, ok, reject];
+
+    const tick = () => {
+      const left = Date.parse(p.expires_at) - Date.now();
+      $(".expiry", card).textContent = left > 0 ? `expires in ${mmss(left)}` : "expired";
+      if (left <= 0) { clearInterval(card._timer); refresh(); }
+    };
+    tick();
+    card._timer = setInterval(tick, 1000);
+    return card;
+  }
+
+  async function approve(id, code) {
+    const card = $(`#approval-${id}`);
+    const note = (text, bad) => {
+      if (!card?._line) return;
+      card._line.textContent = text;
+      card._line.classList.toggle("bad", Boolean(bad));
+    };
+    const lock = (done) => {
+      if (!card) return;
+      card._done = done;
+      for (const b of card._buttons ?? []) b.disabled = done;
+      syncMic();
+    };
+    lock(true);
+    try {
+      const r = await api("/api/approve", { id, code });
+      if (r.ok) {
+        toast(`Approved — ${r.execution.detail}`);
+        note(`Approved. ${r.execution.detail}`);
+      } else {
+        const reason = cap(String(r.reason).replaceAll("_", " "));
+        note(`Refused: ${reason.toLowerCase()}. Nothing was done.`, true);
+        lock(false);
+      }
+    } catch (err) {
+      note(`Could not reach the server: ${err.message}`, true);
+      lock(false);
+    }
+    refresh();
+  }
+
+  function renderHandoffs(list) {
+    const box = $("#handoffList");
+    $("#handoffCount").textContent = `${list.filter((h) => h.status !== "done").length} open`;
+    box.replaceChildren();
+    if (!list.length) { box.append(emptyNote("Say “leave a handoff for …” to record work a specialist picks up on its next run.")); return; }
+    for (const h of list.slice(0, 12)) {
+      const row = node("div", "row wide");
+      row.append(node("p", "title", escapeHtml(h.title)));
+      row.append(node("span", `state ${h.status === "open" ? "on" : ""}`, `${h.status} · ${escapeHtml(h.to)} · ${clock(h.created_at)}`));
+      const body = node("pre", "handoff-body", "Loading…");
+      body.hidden = true;
+      const toggle = async () => {
+        const open = row.getAttribute("aria-expanded") === "true";
+        for (const other of $$(".handoff-body:not([hidden])", box)) other.hidden = true;
+        for (const other of $$("[aria-expanded]", box)) other.setAttribute("aria-expanded", "false");
+        row.setAttribute("aria-expanded", String(!open));
+        body.hidden = open;
+        if (!open) { try { body.textContent = (await api(`/api/handoff/${h.id}`)).content; } catch (err) { body.textContent = `Could not load this handoff: ${err.message}`; } }
+      };
+      row.addEventListener("click", toggle);
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggle();
+        }
+      });
+      row.setAttribute("aria-expanded", "false");
+      row.setAttribute("role", "button");
+      row.setAttribute("aria-label", `Show handoff: ${h.title}`);
+      row.tabIndex = 0;
+      row.append(body);
+      box.append(row);
+    }
+  }
+
+  function renderAgents(list) {
+    const box = $("#agentList");
+    box.replaceChildren();
+    for (const a of list) {
+      const row = node("div", "row");
+      row.append(node("span", "name", escapeHtml(a.name)));
+      row.append(node("span", "meta", escapeHtml(a.role)));
+      row.append(node("span", `state ${a.running ? "on" : ""}`, `${a.running ? "running" : "idle"}${a.tokens ? ` · ${a.tokens.toLocaleString()} tokens` : ""}`));
+      box.append(row);
+    }
+  }
+
+  function renderLog(list, items, line) {
+    list.replaceChildren(...items.slice(0, 60).map(line));
+  }
+
+  const DECISION = {
+    recommendation: (d) => `<strong>Adam advised</strong> ${escapeHtml(plain(d.text).slice(0, 140))}`,
+    action_pending_approval: (d) => `<strong>Waiting for you</strong> ${escapeHtml(d.title)}`,
+    action_executed: (d) => `<strong>Ran (simulated)</strong> ${escapeHtml(d.title)}`,
+  };
+  function decisionLine(d) {
+    const li = node("li", d.kind === "action_executed" ? "ok" : "", `<time>${clock(d.ts)}</time><span>${(DECISION[d.kind] ?? ((x) => `${escapeHtml(x.kind)}`))(d)}</span>`);
+    return li;
+  }
+  const ACTIVITY = {
+    run_started: (e) => `${e.agent} run started`,
+    run_finished: (e) => `${e.agent} run ${e.status}`,
+    agent_started: (e) => `${e.agent} called by ${e.by}`,
+    agent_finished: (e) => `${e.agent} finished (${e.status})`,
+    tool_call: (e) => `${e.agent} · ${e.brief}`,
+    record_read: (e) => `${e.agent} reads ${e.file}`,
+    records_listed: (e) => `${e.agent} lists its records`,
+    handoff_listed: (e) => `${e.agent} lists handoffs`,
+    shared_note_added: (e) => `${e.agent} adds a shared note`,
+    handoff_claim_refused: (e) => `${e.agent} could not claim ${e.handoff}`,
+    approval_expired: (e) => `${e.approval} expired`,
+    approval_voided: (e) => `${e.approval} voided (${e.reason})`,
+    handoff_created: (e) => `handoff for ${e.to}: ${e.title}`,
+    handoff_claimed: (e) => `${e.agent} claimed ${e.handoff}`,
+    handoff_completed: (e) => `${e.agent} completed ${e.handoff}`,
+    action_proposed: (e) => `proposed: ${e.title}`,
+    approval_pending: (e) => `waiting for you: ${e.title}`,
+    approval_given: (e) => `you approved ${e.approval}`,
+    approval_rejected: (e) => `you rejected ${e.approval}`,
+    approval_refused: (e) => `approval refused (${e.reason})`,
+    approval_cancelled: (e) => `cancelled by kill switch: ${e.approval}`,
+    action_executed: (e) => `ran (simulated): ${e.title}`,
+    kill_switch_engaged: (e) => `KILL SWITCH engaged — ${e.cancelled} approval(s) cancelled`,
+    kill_switch_released: () => "kill switch released",
+    error: (e) => `error: ${e.error}`,
+  };
+  const BAD = new Set(["approval_refused", "kill_switch_engaged", "error"]);
+  function activityLine(e) {
+    const text = (ACTIVITY[e.event] ?? ((x) => `${x.event} ${x.agent ?? ""}`))(e);
+    return node("li", BAD.has(e.event) ? "bad" : e.event === "approval_given" ? "ok" : "", `<time>${clock(e.ts)}</time><span>${escapeHtml(text)}</span>`);
+  }
+
+  // ───────────────────────── live events ─────────────────────────
+  // An event can arrive twice — once through the live stream and once in the
+  // next full refresh — so each is shown once by its id. Reading and listing
+  // steps are already described by their tool-call line, so they are not
+  // repeated here (the log file keeps both).
+  const QUIET = new Set(["record_read", "records_listed", "handoff_listed", "shared_note_added"]);
+  const shownEvents = new Set();
+  const eventKey = (ev) => ev.id ?? `${ev.ts}:${ev.event}`;
+  const es = new EventSource("/api/events");
+  es.addEventListener("activity", (e) => {
+    const ev = JSON.parse(e.data);
+    if (shownEvents.has(eventKey(ev))) return;
+    shownEvents.add(eventKey(ev));
+    if (QUIET.has(ev.event)) return;
+    const list = $("#activityList");
+    $("#activityEmpty").hidden = true;
+    list.prepend(activityLine(ev));
+    while (list.children.length > 60) list.lastChild.remove();
+    if (runRow && ev.event === "agent_started") runRow.querySelector(".now").textContent = `${cap(ev.agent)} is on it`;
+    if (runRow && ev.event === "tool_call") runRow.querySelector(".now").textContent = `${cap(ev.agent)} · ${ev.brief}`;
+  });
+  es.addEventListener("run", (e) => onRun(JSON.parse(e.data)));
+  es.addEventListener("state", () => refresh());
+  es.onerror = () => setConnection(false);
+
+  // ───────────────────────── voice ─────────────────────────
+  // Read when listening starts, so a page reload picks up the browser's engine.
+  const recognizerClass = () => window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null;
+  let heard = null;
+  let sayToken = 0;
+  let sayGuard = null;
+
+  function say(text) {
+    if (!S.speak || !("speechSynthesis" in window)) return;
+    const mine = ++sayToken;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+    const voice = voices.find((v) => v.lang === "en-US") ?? voices.find((v) => v.lang.startsWith("en"));
+    if (voice) u.voice = voice;
+    let started = false;
+    u.onstart = () => {
+      started = true;
+      if (sayToken !== mine) return;
+      S.speaking = true;
+      // The microphone closes the moment the system's voice starts.
+      if (rec && S.listening) rec.abort();
+      syncMic();
+    };
+    u.onend = u.onerror = () => {
+      if (sayToken === mine) {
+        clearTimeout(sayGuard);
+        S.speaking = false;
+        syncMic();
+      }
+    };
+    S.speaking = true;
+    syncMic();
+    speechSynthesis.speak(u);
+    // A browser with no voice may accept the utterance, stay silent and never
+    // report the end. The microphone must not stay closed for that.
+    setTimeout(() => {
+      if (sayToken === mine && S.speaking && !started && !speechSynthesis.speaking && !speechSynthesis.pending) {
+        clearTimeout(sayGuard);
+        S.speaking = false;
+        syncMic();
+      }
+    }, 1500);
+    // If the browser never reports the end (no voice installed), the
+    // microphone must not stay closed for good.
+    clearTimeout(sayGuard);
+    sayGuard = setTimeout(() => {
+      if (sayToken === mine && S.speaking) {
+        S.speaking = false;
+        syncMic();
+      }
+    }, 2500 + text.length * 90);
+  }
+
+  function syncMic() {
+    const mic = $("#micBtn");
+    const closed = S.speaking;
+    const talking = S.listening && S.listenMode === "talk";
+    mic.disabled = closed || (!talking && (Boolean(S.busy) || S.killed));
+    mic.setAttribute("aria-pressed", String(talking));
+    mic.title = closed ? "Microphone is closed while Adam speaks" : talking ? "Stop listening" : "Talk to Adam";
+    for (const card of $$(".approval")) {
+      const voice = card._buttons?.[0];
+      if (!voice) continue;
+      voice.disabled = closed || Boolean(card._done);
+      voice.title = closed ? "Microphone is closed while Adam speaks" : 'Say "approve", then the four digits of the code';
+    }
+  }
+
+  const REASON = {
+    "not-allowed": "The browser is not allowed to use the microphone. Allow it for this page and try again.",
+    "service-not-allowed": "The speech service is not available. Type instead.",
+    network: "The speech service could not be reached. Type instead.",
+    "audio-capture": "No microphone was found.",
+  };
+
+  function listen(mode, id) {
+    const Recognizer = recognizerClass();
+    if (!Recognizer) return toast("Voice needs Chrome or Edge. You can type instead.");
+    if (S.speaking) return toast("The microphone is closed while Adam speaks.");
+    if (S.listening) { rec.abort(); return; }
+    rec = new Recognizer();
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 4;
+    heard = null;
+    S.listening = true;
+    S.listenMode = mode;
+    S.target = id ?? null;
+    const out = mode === "approve" ? $(`#approval-${id}`)?._line : null;
+    if (out) { out.textContent = "Listening for the code…"; out.classList.remove("bad"); }
+    syncMic();
+    rec.onresult = (ev) => {
+      let interim = "";
+      const finals = [];
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        if (r.isFinal) finals.push(...Array.from({ length: r.length }, (_, k) => ({ text: r[k].transcript, confidence: r[k].confidence || 0 })));
+        else interim += r[0].transcript;
+      }
+      const soFar = (finals.map((f) => f.text).join(" ") || interim).trim();
+      if (mode === "talk") $("#askText").value = soFar;
+      else if (out && soFar) out.textContent = `Heard: “${soFar}”`;
+      if (finals.length) heard = finals;
+    };
+    rec.onerror = (ev) => {
+      if (ev.error === "aborted") return;
+      if (ev.error === "no-speech") { if (out) out.textContent = "Nothing was heard. Try again or type the code."; return; }
+      toast(REASON[ev.error] ?? `Microphone problem: ${ev.error}. You can type instead.`);
+    };
+    rec.onend = () => {
+      S.listening = false;
+      syncMic();
+      if (heard) finishListening(heard, mode, id);
+      heard = null;
+    };
+    rec.start();
+  }
+
+  function finishListening(alts, mode, id) {
+    if (mode === "talk") {
+      const text = (alts[0]?.text ?? $("#askText").value).trim();
+      $("#askText").value = text;
+      // Clear speech is sent; unclear speech is left in the box for the owner to confirm.
+      if (text && alts[0]?.confidence >= 0.6) $("#composer").requestSubmit();
+      else if (text) $("#composerHint").textContent = "Not sure I heard that right. Edit it or press Send.";
+      return;
+    }
+    const card = S.pending.find((p) => p.id === id);
+    const line = $(`#approval-${id}`)?._line;
+    if (!card || !line) return;
+    const code = card.code.replace(/\D/g, "");
+    const m = matchCode(alts, code);
+    if (m.matched && m.clear) approve(id, code);
+    else if (m.matched) {
+      line.textContent = `Heard “${m.heard}”, but not clearly.`;
+      const go = node("button", "link-btn", "Approve anyway");
+      go.type = "button";
+      go.addEventListener("click", () => approve(id, code));
+      line.append(" ", go);
+    } else line.textContent = "That was not the code. Nothing was approved. Say it again or type it.";
+  }
+
+  // Enter sends; Shift+Enter starts a new line.
+  $("#askText").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      $("#composer").requestSubmit();
+    }
+  });
+
+  $("#micBtn").addEventListener("click", () => listen("talk"));
+
+  $("#speakBtn").addEventListener("click", () => {
+    S.speak = !S.speak;
+    $("#speakBtn").setAttribute("aria-pressed", String(S.speak));
+    if (!S.speak) { speechSynthesis.cancel(); S.speaking = false; syncMic(); }
+  });
+
+  // ───────────────────────── owner actions ─────────────────────────
+  $("#pickupBtn").addEventListener("click", async () => {
+    try { await api("/api/pickup", {}); beginRun("Specialists are picking up handoffs"); } catch (err) { toast(err.message); }
+  });
+
+  const dialog = $("#killDialog");
+  $("#killBtn").addEventListener("click", () => {
+    $("#killSummary").textContent = `${S.pending.length} approval(s) will be cancelled.`;
+    dialog.showModal();
+  });
+  $("#killCancel").addEventListener("click", () => dialog.close());
+  $("#killConfirm").addEventListener("click", async () => {
+    dialog.close();
+    try { const r = await api("/api/kill", {}); toast(`Kill switch engaged. ${r.cancelled} approval(s) cancelled.`); } catch (err) { toast(err.message); }
+    refresh();
+  });
+  $("#resetBtn").addEventListener("click", async () => {
+    try { await api("/api/reset", {}); toast("Kill switch released."); } catch (err) { toast(err.message); }
+    refresh();
+  });
+
+  // ───────────────────────── toast ─────────────────────────
+  function toast(text) {
+    const t = $("#toast");
+    t.textContent = text;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
+  }
+  $("#toast").addEventListener("mouseenter", () => clearTimeout(toastTimer));
+  $("#toast").addEventListener("mouseleave", () => { toastTimer = setTimeout(() => { $("#toast").hidden = true; }, 3000); });
+
+  // ───────────────────────── start ─────────────────────────
+  thread.append(emptyState());
+  if (!recognizerClass()) $("#composerHint").textContent = "Voice needs Chrome or Edge. Text works everywhere.";
+  refresh();
+  setInterval(refresh, 5000);
+})();
+</script>
+</body>
+</html>

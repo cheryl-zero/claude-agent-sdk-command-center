@@ -1,0 +1,25 @@
+{
+  "name": "adam-command-center",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Command center sample: a supervisor agent (Adam) routes to specialist agents on the Claude Agent SDK, with live and recorded handoffs, code-enforced approvals, logs and a kill switch.",
+  "scripts": {
+    "ask": "node src/cli.mjs ask",
+    "pickup": "node src/cli.mjs pickup",
+    "pending": "node src/cli.mjs pending",
+    "approve": "node src/cli.mjs approve",
+    "reject": "node src/cli.mjs reject",
+    "kill": "node src/cli.mjs kill",
+    "reset": "node src/cli.mjs reset",
+    "status": "node src/cli.mjs status",
+    "serve": "node src/cli.mjs serve",
+    "test:unit": "node --test test/voice.test.mjs",
+    "test:e2e": "node test/e2e.mjs",
+    "test": "npm run test:unit && npm run test:e2e"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.331",
+    "zod": "^4.0.0"
+  }
+}

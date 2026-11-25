@@ -1,0 +1,10 @@
+{
+  "_read_me": "Editable policy. An action that matches an entry in 'auto' runs on its own and is logged. Everything else — any payment, anything sent, any access change, and anything no rule covers — waits for the owner. Matching looks only at the structured fields of the action (type, amount), never at what an agent says about it.",
+  "approval": {
+    "expires_seconds": 600,
+    "max_wrong_attempts": 3
+  },
+  "auto": [
+    { "id": "calendar-entry", "match": { "type": "calendar_entry" } }
+  ]
+}
