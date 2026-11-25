@@ -145,7 +145,7 @@ With Docker, one command starts the same page with its data in a volume:
 docker compose up --build   # then open http://localhost:8080
 ```
 
-**Docker status: the files are in this repository but have not been run on a machine with Docker yet.** Treat that command as unverified until this note changes.
+**Docker status: verified.** Started with that exact command on Windows with Docker Desktop (WSL2), page and API served, and a real agent answered from inside the container. The first start pulls the base image and installs dependencies, which takes a few minutes. If port 8080 is taken: `CC_PORT=8082 docker compose up --build`. In China, set Docker Desktop's proxy to your local proxy and add a registry mirror before the first build.
 
 The command line does everything the page does:
 
@@ -225,7 +225,7 @@ The page was checked in a real browser engine at 1440 px and 390 px, with a desi
 
 - **Everything is fake on purpose.** The records are invented. The specialists are real language-model agents, but they hold no tool that can pay, send or change anything.
 - **The model used for testing was not Claude.** The sample ran on the Claude Agent SDK through an Anthropic-compatible endpoint (GLM models). It has not yet been run against Anthropic's own API. The SDK, the agent files and the tool servers are the same either way; the model is one setting in `.env`.
-- **Docker is unverified.** See the note under “Run it”.
+- Docker is verified (see “Run it”); the image is built on Node 24 slim, runs as a non-root user, and keeps its records in a volume.
 - ~~Voice with a live microphone is untested~~ **Verified**: approving by voice with a live microphone worked end to end.
 - **One conversation at a time.** A second request is refused while a run is in progress.
 - **The page has no login.** It binds to this computer only; the Docker setup publishes the port on localhost only.
