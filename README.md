@@ -219,14 +219,14 @@ npm test             both
 
 The end-to-end suite drives real agents through the real SDK for six scenes (live handoff, injected instruction, recorded handoff and pickup, a payment that waits, a specialist facing an injected handoff, a run stopped by the switch). The rest exercise the gate, expiry, tampering and the switch through code only. Every run writes a report to `test/reports/` with the endpoint, the SDK version and per-test timings.
 
-The page was checked in a real browser engine at 1440 px and 390 px, with a design audit for text size, contrast, overlap and edge spacing: conversation, approval with a typed code, the kill switch confirmation, and — with a simulated speech recognizer in place of a microphone — voice approval and voice input. **Not yet done: a test with a live microphone.**
+The page was checked in a real browser engine at 1440 px and 390 px, with a design audit for text size, contrast, overlap and edge spacing: conversation, approval with a typed code, the kill switch confirmation, and voice approval and voice input with a simulated speech recognizer. **Approving by voice was then verified end to end with a live microphone**: the code spoken as "approve eight seven three zero" approved the action, exactly as on the card.
 
 ## Limits, stated plainly
 
 - **Everything is fake on purpose.** The records are invented. The specialists are real language-model agents, but they hold no tool that can pay, send or change anything.
 - **The model used for testing was not Claude.** The sample ran on the Claude Agent SDK through an Anthropic-compatible endpoint (GLM models). It has not yet been run against Anthropic's own API. The SDK, the agent files and the tool servers are the same either way; the model is one setting in `.env`.
 - **Docker is unverified.** See the note under “Run it”.
-- **Voice with a live microphone is untested.** See “Tests”.
+- ~~Voice with a live microphone is untested~~ **Verified**: approving by voice with a live microphone worked end to end.
 - **One conversation at a time.** A second request is refused while a run is in progress.
 - **The page has no login.** It binds to this computer only; the Docker setup publishes the port on localhost only.
 - **The cost figures are estimates.** The page and `npm run status` show tokens per agent and the SDK's cost estimate at list prices. On the endpoint used for testing, that estimate is not what anyone is billed.
